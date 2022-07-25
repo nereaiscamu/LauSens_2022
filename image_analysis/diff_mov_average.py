@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Jul 15 13:18:47 2022
+Created on Mon Jul 25 17:40:21 2022
 
 @author: nerea
 """
-
 import sys 
 import os
 
@@ -20,11 +19,7 @@ from PIL import Image
 from processing.processing_functions import temporal_mean_filter, save_imgs, temporal_median_filter, open_images, binarize_imgs, correct_background, select_ROI, invert_imgs, mask_ROIs
 from analysis.Analyse_results_with_connected_components import Measure
 import cv2
-#from analysis.Select_ROI import execute_roi
-#from AcquireAndSave import execute_capture
-#from AcquireAndDisplay import execute_focus
-
-
+from random import randint
 #%%
 ## OPENING FILES
 ORIGINAL_FOLDER = os.path.dirname(os.path.realpath(__file__))
@@ -60,31 +55,30 @@ ROIs = select_ROI(ROI_PATH)
 #TODO: close image
 
 
+
 #%%
-## PRE-PROCESSING IMAGES
-print('Original images shape: ', np.shape(imgs))
+import numpy.matlib
 
-# 1. Temporal average filter: to remove moving objects
-window_size = 5
-imgs_avg = temporal_mean_filter(imgs, window_size)
-print('Averaged images shape: ', np.shape(imgs_avg))
-#imgs_median = temporal_median_filter(imgs, window_size)
-
-# 2. Background illumination intensity correction
-imgs_corrected = correct_background(imgs_avg, ORIGINAL_FOLDER)  #TODO: WARNING IMGS_AVG
-print('Corrected images shape: ', np.shape(imgs_corrected))
-
-# 3. Inverting image (our AU-NP spots will be white ~255)
-imgs_inv = invert_imgs(imgs_corrected)
-print('Inverted images shape: ', np.shape(imgs_inv))
-
-# 4. Binarizing images: we will have a binary image based on a threshold
-#rets, imgs_thresh = binarize_imgs(imgs_inv, tr = 225)
-imgs_inv_good = imgs_inv[0]
-#imgs_inv_good = imgs_inv.astype(np.uint8)
-blur = cv2.GaussianBlur(imgs_inv_good,(5,5),0)
-ret3,imgs_thresh = cv2.threshold(blur,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-print('Thresholded images shape: ', np.shape(imgs_thresh))
+newarray = np.dstack(imgs)
+num = len(newarray[1,1,:])
+size = np.size(newarray)
 
 
+#%%
+num = 300
+dataCube  = np.random.randint(0, 100, size=(100, 100, 300))
 
+sizeCube = np.size(dataCube)
+x = randint(1, num)
+z = 3; #maybe for python it should be 2
+
+V = [np.ones(num), np.cumprod(np.matlib.repmat(x, 1, z), 1)];
+
+M = V*np.linalg.pinv(V);
+
+
+#%%
+
+polyCube = M*reshape(permute(dataCube,[3 1 2]),sizeCube(3),[]);
+polyCube = reshape(polyCube,[sizeCube(3) sizeCube(1) sizeCube(2)]);
+polyCube = permute(polyCube,[2 3 1]);
