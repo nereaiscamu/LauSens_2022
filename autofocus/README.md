@@ -13,6 +13,9 @@ Files
 - `gui.py` : Main program and software interface
 - `bluriness-test.ipynb` : Testing file for testing bluriness metric
 - `bluriness_metric.py` : Bluriness metric API
+- `manual_focus.py` : Python script to move camera backward and forward (via input) for focusing. It also set the focus step
+- `test.py` : CURRENTLY NOT WORKING (was previously working). Python script to move camera using sangaboard package (many thanks to https://openflexure.discourse.group/t/graphical-interface-for-motor-control/924)
+- `port.py` : Python script to list open or occupied serial port
 - `sensUs.png` : Sens'Us logo image
 
 Folder
