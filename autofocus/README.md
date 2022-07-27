@@ -20,6 +20,7 @@ Files
 
 Folder
 
+- `sketch_may17a` : Arduino sketch for motor control (to be upload on arduino Nano)
 - `Images` : all images from microscope in \_.fig \_.png or \_.jpg format
 
 ### Requirements
