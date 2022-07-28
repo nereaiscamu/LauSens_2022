@@ -25,7 +25,7 @@ Folder
 
 ### Requirements
 
-`Matplotlib, numpy, opencv-python` python packages
+`Matplotlib, numpy, opencv-python, serial, simple-pyspin, PySimpleGUI, cv2pip install opencv-python` python packages 
 
 ### How to use ?
 
