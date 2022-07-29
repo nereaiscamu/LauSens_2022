@@ -8,6 +8,18 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 import cv2
+import serial
+import time
+
+# Arduino init
+arduino = serial.Serial(port='COM3', baudrate=9600, timeout=.1)
+print(arduino)
+time.sleep(2)
+
+# Move camera 
+def move(com):
+    arduino.write(com.encode("ascii"))
+    time.sleep(0.05)
 
 # Logo
 size = (200, 100)
@@ -86,8 +98,12 @@ explanations = [
 ]
 
 print_metric = [
-    [sg.Button("Update")],
+    [sg.Button("Update"), sg.Button("Autofocus")],
     [sg.Text(key='-TEXT_METRIC-')],
+    [sg.Text("\nStep focus : \n"), sg.Spin([10*i for i in range(21)], initial_value = 50 ,pad = (10, 0, 0, 0), key = '-STEP_FOCUS-', font = 100)],
+    [sg.Button("↑", pad  = (25, 0, 0, 0), key='-UP-'), sg.Button("↑", pad  = (10, 0, 0, 0), key='-UP2-')],
+    [sg.Button("←", key='-LEFT-'), sg.Button("→", key='-RIGHT-')],
+    [sg.Button("↓", key='-DOWN-', pad  = (25, 0, 0, 0)), sg.Button("↓", pad  = (10, 0, 0, 0), key='-DOWN2-')]
 ]
 
 img_to_print = [
@@ -131,6 +147,10 @@ window = sg.Window("LauSens - Autofocus Interface",
 image = ImageTk.PhotoImage(image=im)
 window['-LOGO-'].update(data=image)
 window['-TEXT_METRIC-'].update("Please browse and choose your file")
+window['-TEXT_METRIC-'].update(
+            "Bluriness metric for this image :\n" +
+            "Laplacian variance measurement : NaN arb. \n" +
+            "JPEG size measurement : NaN kB")
 
 def _photo_image(image: np.ndarray):
     height, width = image.shape
@@ -144,6 +164,8 @@ while True:
 
     if event == "Exit" or event == sg.WIN_CLOSED:
         break
+    elif event == "Autofocus":
+        print("perform autofocus")
     elif event == "Update":
         # print(values["-IN-"])
         # im2 = Image.open(values["-IN-"])
@@ -158,8 +180,14 @@ while True:
             image_data = image_result.GetNDArray()
 
             # Save image
+            # SLOW
             img = Image.fromarray(image_data)
             img.save(path + "/tmp.png")
+            window['-TEXT_METRIC-'].update(
+             "Bluriness metric for this image :\n" +
+             "Laplacian variance measurement : " + str(bluriness_metric.blurre_lapace_var(path + "/tmp.png")) + " arb. \n" +
+             "JPEG size measurement : " + str(bluriness_metric.blurre_JPEG_size_b(path + "/tmp.png") / 8 / 1000) + " kB")  # bits to kiloBytes
+
             # OR
             #save_img = ImageTk.getimage( img )
             #save_img.save(path + "/tmp.jpg") 
@@ -180,6 +208,32 @@ while True:
         #    "Bluriness metric for this image :\n" +
         #    "Laplacian variance measurement : " + str(bluriness_metric.blurre_lapace_var(values["-IN-"])) + " arb. \n" +
         #    "JPEG size measurement : " + str(bluriness_metric.blurre_JPEG_size_b(values["-IN-"]) / 8 / 1000) + " kB \n")  # bits to kiloBytes
+    elif event == "-LEFT-":
+        print("left")
+        com = "04 " + str(window['-STEP_FOCUS-'].get()).zfill(4) +" xfw"
+        print(com)
+        move(com)
+    elif event == "-RIGHT-":
+        print("right")
+        com = "04 " + str(window['-STEP_FOCUS-'].get()).zfill(4) +" xbw"
+        move(com)
+    elif event == "-UP-":
+        print("up")
+        com = "04 " + str(window['-STEP_FOCUS-'].get()).zfill(4) +" yfw"
+        move(com)
+    elif event == "-DOWN-":
+        print("down")
+        com = "04 " + str(window['-STEP_FOCUS-'].get()).zfill(4) +" ybw"
+        move(com)
+    elif event == "-UP2-":
+        print("up2")
+        com = "04 " + str(window['-STEP_FOCUS-'].get()).zfill(4) +" zfw"
+        move(com)
+    elif event == "-DOWN2-":
+        print("down2")
+        com = "04 " + str(window['-STEP_FOCUS-'].get()).zfill(4) +" zbw"
+        move(com)
+
 
 cam.EndAcquisition()
 cam.DeInit()
