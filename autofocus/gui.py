@@ -1,8 +1,7 @@
-# hello_psg.py
-
 import PySimpleGUI as sg
 from PIL import Image, ImageTk
 import bluriness_metric
+import control_flip_camera
 import PySpin
 import matplotlib.pyplot as plt
 import os
@@ -13,13 +12,16 @@ import time
 
 # Arduino init
 arduino = serial.Serial(port='COM3', baudrate=9600, timeout=.1)
-print(arduino)
 time.sleep(1)
+print(arduino)
 
-# Move camera 
+# Move camera
+
+
 def move(com):
     arduino.write(com.encode("ascii"))
     time.sleep(0.05)
+
 
 def move_along_axis(pos_camera, dir, step_focus):
     com = "04 " + str(step_focus).zfill(4)
@@ -38,7 +40,7 @@ def move_along_axis(pos_camera, dir, step_focus):
     elif event == "-UP2-":
         com += " zfw"
         pos_camera += np.array([0, 0, step_focus])
-    else: # -DOWN2-
+    else:  # -DOWN2-
         com += " zbw"
         pos_camera -= np.array([0, 0, step_focus])
     move(com)
@@ -46,71 +48,70 @@ def move_along_axis(pos_camera, dir, step_focus):
 
 # Logo
 size = (100, 50)
-
-path = os.path.dirname(os.path.abspath(__file__))
+path = os.path.dirname(os.path.abspath(__file__))  # path of this file
 im = Image.open(path + "/sensUs.png")
 im = im.resize(size, resample=Image.BICUBIC)
 
-# Video/ Image stream
+# Video / Image stream
+print("Connection with camera")
 system = PySpin.System.GetInstance()
-version = system.GetLibraryVersion()
+#version = system.GetLibraryVersion()
 cam_list = system.GetCameras()
 num_cameras = cam_list.GetSize()
-
-if num_cameras != 1: # no camera or more than one camera
+if num_cameras != 1:  # No camera or more than one camera
     cam_list.Clear()
     system.ReleaseInstance()
-    raise Exception('Singe camera not detected')
-
+    raise Exception('Single camera not detected')
 cam = cam_list[0]
+
+
+# Init camera
 try:
     nodemap_tldevice = cam.GetTLDeviceNodeMap()
     cam.Init()
     nodemap = cam.GetNodeMap()
 
     sNodemap = cam.GetTLStreamNodeMap()
-    node_bufferhandling_mode = PySpin.CEnumerationPtr(sNodemap.GetNode('StreamBufferHandlingMode'))
+    node_bufferhandling_mode = PySpin.CEnumerationPtr(
+        sNodemap.GetNode('StreamBufferHandlingMode'))
     if not PySpin.IsAvailable(node_bufferhandling_mode) or not PySpin.IsWritable(node_bufferhandling_mode):
-        raise Exception('Unable to set stream buffer handling mode.. Aborting...')
+        raise Exception(
+            'Unable to set stream buffer handling mode.. Aborting...')
 
     node_newestonly = node_bufferhandling_mode.GetEntryByName('NewestOnly')
     if not PySpin.IsAvailable(node_newestonly) or not PySpin.IsReadable(node_newestonly):
-        raise Exception('Unable to set stream buffer handling mode.. Aborting...')
+        raise Exception(
+            'Unable to set stream buffer handling mode.. Aborting...')
 
     node_newestonly_mode = node_newestonly.GetValue()
     node_bufferhandling_mode.SetIntValue(node_newestonly_mode)
 
-    node_acquisition_mode = PySpin.CEnumerationPtr(nodemap.GetNode('AcquisitionMode'))
+    node_acquisition_mode = PySpin.CEnumerationPtr(
+        nodemap.GetNode('AcquisitionMode'))
     if not PySpin.IsAvailable(node_acquisition_mode) or not PySpin.IsWritable(node_acquisition_mode):
-        raise Exception('Unable to set acquisition mode to continuous (enum retrieval). Aborting...')
+        raise Exception(
+            'Unable to set acquisition mode to continuous (enum retrieval). Aborting...')
 
     # Retrieve entry node from enumeration node
-    node_acquisition_mode_continuous = node_acquisition_mode.GetEntryByName('Continuous')
+    node_acquisition_mode_continuous = node_acquisition_mode.GetEntryByName(
+        'Continuous')
     if not PySpin.IsAvailable(node_acquisition_mode_continuous) or not PySpin.IsReadable(
             node_acquisition_mode_continuous):
-        raise Exception('Unable to set acquisition mode to continuous (entry retrieval). Aborting...')
+        raise Exception(
+            'Unable to set acquisition mode to continuous (entry retrieval). Aborting...')
 
     # Retrieve integer value from entry node
     acquisition_mode_continuous = node_acquisition_mode_continuous.GetValue()
 
     # Set integer value from entry node as new value of enumeration node
     node_acquisition_mode.SetIntValue(acquisition_mode_continuous)
-
-    print('Acquisition mode set to continuous...')
+    #print('Acquisition mode set to continuous...')
 
     cam.BeginAcquisition()
-    print('Acquiring images...')
-
-    device_serial_number = ''
-    node_device_serial_number = PySpin.CStringPtr(nodemap_tldevice.GetNode('DeviceSerialNumber'))
-    if PySpin.IsAvailable(node_device_serial_number) and PySpin.IsReadable(node_device_serial_number):
-        device_serial_number = node_device_serial_number.GetValue()
-        print('Device serial number retrieved as %s...' % device_serial_number)
 
 except PySpin.SpinnakerException as ex:
-        raise Exception('Error: %s' % ex)
+    raise Exception('Error: %s' % ex)
 
-# im2 = Image.open("images/blur_1.jpeg")
 
 sens_us_logo = [
     [sg.Image(size=size, key='-LOGO-')]
@@ -123,10 +124,13 @@ explanations = [
 print_metric = [
     [sg.Button("Update"), sg.Button("Autofocus")],
     [sg.Text(key='-TEXT_METRIC-')],
-    [sg.Text("\nStep focus : \n"), sg.Spin([10*i for i in range(21)], initial_value = 50 ,pad = (10, 0, 0, 0), key = '-STEP_FOCUS-', font = 100)],
-    [sg.Button("↑", pad  = (25, 0, 0, 0), key='-UP-'), sg.Button("↑", pad  = (10, 0, 0, 0), key='-UP2-')],
+    [sg.Text("\nStep focus : \n"), sg.Spin([10*i for i in range(21)],
+                                           initial_value=50, pad=(10, 0, 0, 0), key='-STEP_FOCUS-', font=100)],
+    [sg.Button("↑", pad=(25, 0, 0, 0), key='-UP-'),
+     sg.Button("↑", pad=(10, 0, 0, 0), key='-UP2-')],
     [sg.Button("←", key='-LEFT-'), sg.Button("→", key='-RIGHT-')],
-    [sg.Button("↓", key='-DOWN-', pad  = (25, 0, 0, 0)), sg.Button("↓", pad  = (10, 0, 0, 0), key='-DOWN2-')]
+    [sg.Button("↓", key='-DOWN-', pad=(25, 0, 0, 0)),
+     sg.Button("↓", pad=(10, 0, 0, 0), key='-DOWN2-')]
 ]
 
 img_to_print = [
@@ -162,32 +166,38 @@ window = sg.Window("LauSens - Autofocus Interface",
 image = ImageTk.PhotoImage(image=im)
 window['-LOGO-'].update(data=image)
 window['-TEXT_METRIC-'].update(
-            "Bluriness metric for this image :\n" +
-            "Laplacian variance measurement : NaN arb. \n" +
-            "JPEG size measurement : NaN kB  \n\n" +
-            "Image position :\n(0, 0, 0)")
+    "Bluriness metric for this image :\n" +
+    "Laplacian variance measurement : NaN arb. \n" +
+    "JPEG size measurement : NaN kB  \n\n" +
+    "Image position :\n(0, 0, 0)")
+
 
 def _photo_image(image: np.ndarray):
     height, width = image.shape
-    data = f'P5 {width} {height} 255 '.encode() + image.astype(np.uint8).tobytes()
+    data = f'P5 {width} {height} 255 '.encode(
+    ) + image.astype(np.uint8).tobytes()
     return ImageTk.PhotoImage(width=width, height=height, data=data, format='PPM')
+
 
 def get_metric():
     image_result = cam.GetNextImage(1000)
     if image_result.IsIncomplete():
-        raise Exception('Image incomplete with image status %d ...' % image_result.GetImageStatus())
-    else:                    
+        raise Exception('Image incomplete with image status %d ...' %
+                        image_result.GetImageStatus())
+    else:
         image_data = image_result.GetNDArray()
-        
+
         # reduce image
         reducing_factor = 0.15
-        resized_width, resized_height = [int(i * reducing_factor) for i in image_data.shape]
-        image_data=cv2.resize(image_data, (resized_height, resized_width))
+        resized_width, resized_height = [
+            int(i * reducing_factor) for i in image_data.shape]
+        image_data = cv2.resize(image_data, (resized_height, resized_width))
 
         img = Image.fromarray(image_data)
         img.save(path + "/tmp.png", compress_level=1)
     image_result.Release()
     return bluriness_metric.blurre_lapace_var(path + "/tmp.png")
+
 
 def autofocus_simple(pos_camera):
     optimum = False
@@ -211,7 +221,7 @@ def autofocus_simple(pos_camera):
         time.sleep(5)
         below = get_metric()
         print("below : ", below)
-        
+
         if below >= opt_val and above <= opt_val:
             pass
         elif above >= opt_val and below <= opt_val:
@@ -227,7 +237,8 @@ def autofocus_simple(pos_camera):
         if abs(above - below) < 0.5:
             optimum = True
 
-pos_camera = np.array([0,0,0])
+
+pos_camera = np.array([0, 0, 0])
 
 # Run the Event Loop
 while True:
@@ -240,16 +251,13 @@ while True:
         autofocus_simple(pos_camera)
 
     elif event == "Update":
-        # print(values["-IN-"])
-        # im2 = Image.open(values["-IN-"])
-        # image = ImageTk.PhotoImage(image=im2)
-
         image_result = cam.GetNextImage(1000)
 
         if image_result.IsIncomplete():
-            raise Exception('Image incomplete with image status %d ...' % image_result.GetImageStatus())
+            raise Exception('Image incomplete with image status %d ...' %
+                            image_result.GetImageStatus())
 
-        else:                    
+        else:
             image_data = image_result.GetNDArray()
 
             # Save image
@@ -259,17 +267,20 @@ while True:
             start_time = time.time()
             img.save(path + "/tmp.png", compress_level=3)
             print(f"Done in {time.time() - start_time} sec")
-            
+
             window['-TEXT_METRIC-'].update(
-             "Bluriness metric for this image :\n" +
-             "Laplacian variance measurement : " + str(bluriness_metric.blurre_lapace_var(path + "/tmp.png")) + " arb. \n" +
-             "JPEG size measurement : " + str(bluriness_metric.blurre_JPEG_size_b(path + "/tmp.png") / 8 / 1000) + " kB \n\n" +  # bits to kiloBytes
-             "Image position :\n" + str(pos_camera))
+                "Bluriness metric for this image :\n" +
+                "Laplacian variance measurement : " + str(bluriness_metric.blurre_lapace_var(path + "/tmp.png")) + " arb. \n" +
+                # bits to kiloBytes
+                "JPEG size measurement : " + str(bluriness_metric.blurre_JPEG_size_b(path + "/tmp.png") / 8 / 1000) + " kB \n\n" +
+                "Image position :\n" + str(pos_camera))
 
             # reduce image
             reducing_factor = 0.15
-            resized_width, resized_height = [int(i * reducing_factor) for i in image_data.shape]
-            image_data=cv2.resize(image_data, (resized_height, resized_width))
+            resized_width, resized_height = [
+                int(i * reducing_factor) for i in image_data.shape]
+            image_data = cv2.resize(
+                image_data, (resized_height, resized_width))
 
             """
             img = Image.fromarray(image_data)
@@ -280,10 +291,10 @@ while True:
             """
 
             # To display img after
-            img =  _photo_image(image_data) 
+            img = _photo_image(image_data)
 
         image_result.Release()
-        
+
         window['-IMAGE2-'].update(data=img)
 
     elif event in {"-LEFT-", "-RIGHT-", "-UP-", "-DOWN-", "-UP2-", "-DOWN2-"}:
