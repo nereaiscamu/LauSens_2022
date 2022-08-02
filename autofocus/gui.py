@@ -14,15 +14,38 @@ import time
 # Arduino init
 arduino = serial.Serial(port='COM3', baudrate=9600, timeout=.1)
 print(arduino)
-time.sleep(2)
+time.sleep(1)
 
 # Move camera 
 def move(com):
     arduino.write(com.encode("ascii"))
     time.sleep(0.05)
 
+def move_along_axis(pos_camera, dir, step_focus):
+    com = "04 " + str(step_focus).zfill(4)
+    if dir == "-LEFT-":
+        com += " xfw"
+        pos_camera += np.array([step_focus, 0, 0])
+    elif event == "-RIGHT-":
+        com += " xbw"
+        pos_camera -= np.array([step_focus, 0, 0])
+    elif event == "-UP-":
+        com += " yfw"
+        pos_camera += np.array([0, step_focus, 0])
+    elif event == "-DOWN-":
+        com += " ybw"
+        pos_camera -= np.array([0, step_focus, 0])
+    elif event == "-UP2-":
+        com += " zfw"
+        pos_camera += np.array([0, 0, step_focus])
+    else: # -DOWN2-
+        com += " zbw"
+        pos_camera -= np.array([0, 0, step_focus])
+    move(com)
+
+
 # Logo
-size = (200, 100)
+size = (100, 50)
 
 path = os.path.dirname(os.path.abspath(__file__))
 im = Image.open(path + "/sensUs.png")
@@ -90,7 +113,7 @@ except PySpin.SpinnakerException as ex:
 # im2 = Image.open("images/blur_1.jpeg")
 
 sens_us_logo = [
-    [sg.Image(size=(300, 300), key='-LOGO-')]
+    [sg.Image(size=size, key='-LOGO-')]
 ]
 
 explanations = [
@@ -116,25 +139,17 @@ img_to_print = [
 layout = [
 
     [
-
         sg.Column(sens_us_logo),
-
         sg.VSeperator(),
-
         sg.Column(explanations, element_justification='left',
-                  expand_x=True, size=(100, 100)),
-
+                  expand_x=True, size=(100, 50)),
     ],
 
     [
-
         sg.Column(img_to_print),
-
         sg.VSeperator(),
-
         sg.Column(print_metric, element_justification='left',
                   expand_x=True, size=(100, 400)),
-
     ]
 
 ]
@@ -146,26 +161,84 @@ window = sg.Window("LauSens - Autofocus Interface",
 
 image = ImageTk.PhotoImage(image=im)
 window['-LOGO-'].update(data=image)
-window['-TEXT_METRIC-'].update("Please browse and choose your file")
 window['-TEXT_METRIC-'].update(
             "Bluriness metric for this image :\n" +
             "Laplacian variance measurement : NaN arb. \n" +
-            "JPEG size measurement : NaN kB")
+            "JPEG size measurement : NaN kB  \n\n" +
+            "Image position :\n(0, 0, 0)")
 
 def _photo_image(image: np.ndarray):
     height, width = image.shape
     data = f'P5 {width} {height} 255 '.encode() + image.astype(np.uint8).tobytes()
     return ImageTk.PhotoImage(width=width, height=height, data=data, format='PPM')
 
+def get_metric():
+    image_result = cam.GetNextImage(1000)
+    if image_result.IsIncomplete():
+        raise Exception('Image incomplete with image status %d ...' % image_result.GetImageStatus())
+    else:                    
+        image_data = image_result.GetNDArray()
+        
+        # reduce image
+        reducing_factor = 0.15
+        resized_width, resized_height = [int(i * reducing_factor) for i in image_data.shape]
+        image_data=cv2.resize(image_data, (resized_height, resized_width))
+
+        img = Image.fromarray(image_data)
+        img.save(path + "/tmp.png", compress_level=1)
+    image_result.Release()
+    return bluriness_metric.blurre_lapace_var(path + "/tmp.png")
+
+def autofocus_simple(pos_camera):
+    optimum = False
+    opt_val = 0
+    step = 100
+    while optimum == False:
+        print("start")
+        print("current : ", get_metric())
+
+        move_along_axis(pos_camera, "-UP2-", step)
+        time.sleep(5)
+        above = get_metric()
+        print("above : ", above)
+
+        move_along_axis(pos_camera, "-DOWN2-", step)
+        time.sleep(5)
+        opt_val = get_metric()
+        print("current (opti) : ", opt_val)
+
+        move_along_axis(pos_camera, "-DOWN2-", step)
+        time.sleep(5)
+        below = get_metric()
+        print("below : ", below)
+        
+        if below >= opt_val and above <= opt_val:
+            pass
+        elif above >= opt_val and below <= opt_val:
+            move_along_axis(pos_camera, "-UP2-", step)
+            time.sleep(5)
+            move_along_axis(pos_camera, "-UP2-", step)
+            time.sleep(5)
+        else:
+            move_along_axis(pos_camera, "-UP2-", step)
+            time.sleep(5)
+            step = int(step / 2)
+
+        if abs(above - below) < 0.5:
+            optimum = True
+
+pos_camera = np.array([0,0,0])
+
 # Run the Event Loop
 while True:
-
     event, values = window.read()
 
     if event == "Exit" or event == sg.WIN_CLOSED:
         break
     elif event == "Autofocus":
         print("perform autofocus")
+        autofocus_simple(pos_camera)
+
     elif event == "Update":
         # print(values["-IN-"])
         # im2 = Image.open(values["-IN-"])
@@ -182,21 +255,29 @@ while True:
             # Save image
             # SLOW
             img = Image.fromarray(image_data)
-            img.save(path + "/tmp.png")
+            print("Saving ...")
+            start_time = time.time()
+            img.save(path + "/tmp.png", compress_level=3)
+            print(f"Done in {time.time() - start_time} sec")
+            
             window['-TEXT_METRIC-'].update(
              "Bluriness metric for this image :\n" +
              "Laplacian variance measurement : " + str(bluriness_metric.blurre_lapace_var(path + "/tmp.png")) + " arb. \n" +
-             "JPEG size measurement : " + str(bluriness_metric.blurre_JPEG_size_b(path + "/tmp.png") / 8 / 1000) + " kB")  # bits to kiloBytes
-
-            # OR
-            #save_img = ImageTk.getimage( img )
-            #save_img.save(path + "/tmp.jpg") 
-            #save_img.close()
+             "JPEG size measurement : " + str(bluriness_metric.blurre_JPEG_size_b(path + "/tmp.png") / 8 / 1000) + " kB \n\n" +  # bits to kiloBytes
+             "Image position :\n" + str(pos_camera))
 
             # reduce image
-            reducing_factor = 0.1
+            reducing_factor = 0.15
             resized_width, resized_height = [int(i * reducing_factor) for i in image_data.shape]
             image_data=cv2.resize(image_data, (resized_height, resized_width))
+
+            """
+            img = Image.fromarray(image_data)
+            print("Saving ...")
+            start_time = time.time()
+            img.save(path + "/tmp.png", compress_level=3)
+            print(f"Done in {time.time() - start_time} sec")
+            """
 
             # To display img after
             img =  _photo_image(image_data) 
@@ -204,35 +285,10 @@ while True:
         image_result.Release()
         
         window['-IMAGE2-'].update(data=img)
-        #window['-TEXT_METRIC-'].update(
-        #    "Bluriness metric for this image :\n" +
-        #    "Laplacian variance measurement : " + str(bluriness_metric.blurre_lapace_var(values["-IN-"])) + " arb. \n" +
-        #    "JPEG size measurement : " + str(bluriness_metric.blurre_JPEG_size_b(values["-IN-"]) / 8 / 1000) + " kB \n")  # bits to kiloBytes
-    elif event == "-LEFT-":
-        print("left")
-        com = "04 " + str(window['-STEP_FOCUS-'].get()).zfill(4) +" xfw"
-        print(com)
-        move(com)
-    elif event == "-RIGHT-":
-        print("right")
-        com = "04 " + str(window['-STEP_FOCUS-'].get()).zfill(4) +" xbw"
-        move(com)
-    elif event == "-UP-":
-        print("up")
-        com = "04 " + str(window['-STEP_FOCUS-'].get()).zfill(4) +" yfw"
-        move(com)
-    elif event == "-DOWN-":
-        print("down")
-        com = "04 " + str(window['-STEP_FOCUS-'].get()).zfill(4) +" ybw"
-        move(com)
-    elif event == "-UP2-":
-        print("up2")
-        com = "04 " + str(window['-STEP_FOCUS-'].get()).zfill(4) +" zfw"
-        move(com)
-    elif event == "-DOWN2-":
-        print("down2")
-        com = "04 " + str(window['-STEP_FOCUS-'].get()).zfill(4) +" zbw"
-        move(com)
+
+    elif event in {"-LEFT-", "-RIGHT-", "-UP-", "-DOWN-", "-UP2-", "-DOWN2-"}:
+        step_focus = window['-STEP_FOCUS-'].get()
+        move_along_axis(pos_camera, event, step_focus)
 
 
 cam.EndAcquisition()
