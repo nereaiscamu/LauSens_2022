@@ -16,28 +16,25 @@ time.sleep(1)
 print(arduino)
 
 # Move camera
-
-
 def move(com):
     arduino.write(com.encode("ascii"))
     time.sleep(0.05)
-
 
 def move_along_axis(pos_camera, dir, step_focus):
     com = "04 " + str(step_focus).zfill(4)
     if dir == "-LEFT-":
         com += " xfw"
         pos_camera += np.array([step_focus, 0, 0])
-    elif event == "-RIGHT-":
+    elif dir == "-RIGHT-":
         com += " xbw"
         pos_camera -= np.array([step_focus, 0, 0])
-    elif event == "-UP-":
+    elif dir == "-UP-":
         com += " yfw"
         pos_camera += np.array([0, step_focus, 0])
-    elif event == "-DOWN-":
+    elif dir == "-DOWN-":
         com += " ybw"
         pos_camera -= np.array([0, step_focus, 0])
-    elif event == "-UP2-":
+    elif dir == "-UP2-":
         com += " zfw"
         pos_camera += np.array([0, 0, step_focus])
     else:  # -DOWN2-
@@ -45,17 +42,17 @@ def move_along_axis(pos_camera, dir, step_focus):
         pos_camera -= np.array([0, 0, step_focus])
     move(com)
 
+# Absolute path of this file
+path = os.path.dirname(os.path.abspath(__file__))  
 
 # Logo
 size = (100, 50)
-path = os.path.dirname(os.path.abspath(__file__))  # path of this file
 im = Image.open(path + "/sensUs.png")
 im = im.resize(size, resample=Image.BICUBIC)
 
 # Video / Image stream
 print("Connection with camera")
 system = PySpin.System.GetInstance()
-#version = system.GetLibraryVersion()
 cam_list = system.GetCameras()
 num_cameras = cam_list.GetSize()
 if num_cameras != 1:  # No camera or more than one camera
@@ -64,54 +61,8 @@ if num_cameras != 1:  # No camera or more than one camera
     raise Exception('Single camera not detected')
 cam = cam_list[0]
 
-
 # Init camera
-try:
-    nodemap_tldevice = cam.GetTLDeviceNodeMap()
-    cam.Init()
-    nodemap = cam.GetNodeMap()
-
-    sNodemap = cam.GetTLStreamNodeMap()
-    node_bufferhandling_mode = PySpin.CEnumerationPtr(
-        sNodemap.GetNode('StreamBufferHandlingMode'))
-    if not PySpin.IsAvailable(node_bufferhandling_mode) or not PySpin.IsWritable(node_bufferhandling_mode):
-        raise Exception(
-            'Unable to set stream buffer handling mode.. Aborting...')
-
-    node_newestonly = node_bufferhandling_mode.GetEntryByName('NewestOnly')
-    if not PySpin.IsAvailable(node_newestonly) or not PySpin.IsReadable(node_newestonly):
-        raise Exception(
-            'Unable to set stream buffer handling mode.. Aborting...')
-
-    node_newestonly_mode = node_newestonly.GetValue()
-    node_bufferhandling_mode.SetIntValue(node_newestonly_mode)
-
-    node_acquisition_mode = PySpin.CEnumerationPtr(
-        nodemap.GetNode('AcquisitionMode'))
-    if not PySpin.IsAvailable(node_acquisition_mode) or not PySpin.IsWritable(node_acquisition_mode):
-        raise Exception(
-            'Unable to set acquisition mode to continuous (enum retrieval). Aborting...')
-
-    # Retrieve entry node from enumeration node
-    node_acquisition_mode_continuous = node_acquisition_mode.GetEntryByName(
-        'Continuous')
-    if not PySpin.IsAvailable(node_acquisition_mode_continuous) or not PySpin.IsReadable(
-            node_acquisition_mode_continuous):
-        raise Exception(
-            'Unable to set acquisition mode to continuous (entry retrieval). Aborting...')
-
-    # Retrieve integer value from entry node
-    acquisition_mode_continuous = node_acquisition_mode_continuous.GetValue()
-
-    # Set integer value from entry node as new value of enumeration node
-    node_acquisition_mode.SetIntValue(acquisition_mode_continuous)
-    #print('Acquisition mode set to continuous...')
-
-    cam.BeginAcquisition()
-
-except PySpin.SpinnakerException as ex:
-    raise Exception('Error: %s' % ex)
-
+control_flip_camera.init_camera(cam)
 
 sens_us_logo = [
     [sg.Image(size=size, key='-LOGO-')]
@@ -122,15 +73,24 @@ explanations = [
 ]
 
 print_metric = [
-    [sg.Button("Update"), sg.Button("Autofocus")],
     [sg.Text(key='-TEXT_METRIC-')],
-    [sg.Text("\nStep focus : \n"), sg.Spin([10*i for i in range(21)],
-                                           initial_value=50, pad=(10, 0, 0, 0), key='-STEP_FOCUS-', font=100)],
     [sg.Button("↑", pad=(25, 0, 0, 0), key='-UP-'),
-     sg.Button("↑", pad=(10, 0, 0, 0), key='-UP2-')],
+    sg.Button("↑", pad=(10, 0, 0, 0), key='-UP2-')],
     [sg.Button("←", key='-LEFT-'), sg.Button("→", key='-RIGHT-')],
     [sg.Button("↓", key='-DOWN-', pad=(25, 0, 0, 0)),
-     sg.Button("↓", pad=(10, 0, 0, 0), key='-DOWN2-')]
+    sg.Button("↓", pad=(10, 0, 0, 0), key='-DOWN2-')],
+    [sg.Text('_'*15)],
+    [sg.Text("Parameters :")],
+    [sg.Text("Step focus :"), sg.Spin([10*i for i in range(21)],
+                                           initial_value=50, key='-STEP_FOCUS-', font=('Helvetica 12'), size = (3, 2)), 
+     sg.Text("Exposure time :"), sg.Spin([100*i for i in range(100, 200)],
+                                           initial_value=10332, key='-EXP_TIME-', font=('Helvetica 12'), change_submits = True)
+                                           ],
+
+    [sg.Text("         Gain :"), sg.Spin([i/10 for i in range(100, 300)],
+                                           initial_value=23.3, key='-GAIN-', font=('Helvetica 12'), change_submits = True)],
+    [sg.Text('_'*23)],
+    [sg.Button("UPDATE", key="Update"), sg.Button("AUTO-FOCUS", key="Autofocus")],
 ]
 
 img_to_print = [
@@ -139,23 +99,19 @@ img_to_print = [
 
 
 # ----- Full layout -----
-
 layout = [
-
     [
         sg.Column(sens_us_logo),
         sg.VSeperator(),
         sg.Column(explanations, element_justification='left',
                   expand_x=True, size=(100, 50)),
     ],
-
     [
         sg.Column(img_to_print),
         sg.VSeperator(),
         sg.Column(print_metric, element_justification='left',
                   expand_x=True, size=(100, 400)),
     ]
-
 ]
 
 sg.theme('SystemDefault')
@@ -169,7 +125,7 @@ window['-TEXT_METRIC-'].update(
     "Bluriness metric for this image :\n" +
     "Laplacian variance measurement : NaN arb. \n" +
     "JPEG size measurement : NaN kB  \n\n" +
-    "Image position :\n(0, 0, 0)")
+    "Image position :\n(0, 0, 0)\n")
 
 
 def _photo_image(image: np.ndarray):
@@ -250,6 +206,12 @@ while True:
         print("perform autofocus")
         autofocus_simple(pos_camera)
 
+    elif event == "-EXP_TIME-":
+        control_flip_camera.configure_exposure(cam, window['-EXP_TIME-'].get())
+
+    elif event == "-GAIN-":
+        control_flip_camera.configure_gain(cam, window['-GAIN-'].get())
+
     elif event == "Update":
         image_result = cam.GetNextImage(1000)
 
@@ -273,7 +235,7 @@ while True:
                 "Laplacian variance measurement : " + str(bluriness_metric.blurre_lapace_var(path + "/tmp.png")) + " arb. \n" +
                 # bits to kiloBytes
                 "JPEG size measurement : " + str(bluriness_metric.blurre_JPEG_size_b(path + "/tmp.png") / 8 / 1000) + " kB \n\n" +
-                "Image position :\n" + str(pos_camera))
+                "Image position :\n" + str(pos_camera) + "\n")
 
             # reduce image
             reducing_factor = 0.15
