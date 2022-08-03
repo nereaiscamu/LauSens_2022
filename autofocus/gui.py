@@ -90,7 +90,7 @@ print_metric = [
     [sg.Text("         Gain :"), sg.Spin([i/10 for i in range(100, 300)],
                                            initial_value=23.3, key='-GAIN-', font=('Helvetica 12'), change_submits = True)],
     [sg.Text('_'*23)],
-    [sg.Button("UPDATE", key="Update"), sg.Button("AUTO-FOCUS", key="Autofocus")],
+    [sg.Button("AUTO-FOCUS", key="Autofocus")],
 ]
 
 img_to_print = [
@@ -196,9 +196,60 @@ def autofocus_simple(pos_camera):
 
 pos_camera = np.array([0, 0, 0])
 
+def update():
+    image_result = cam.GetNextImage(1000)
+
+    if image_result.IsIncomplete():
+        raise Exception('Image incomplete with image status %d ...' %
+                        image_result.GetImageStatus())
+
+    else:
+        image_data = image_result.GetNDArray()
+
+        # Save image
+        # SLOW
+        """
+        img = Image.fromarray(image_data)
+        print("Saving ...")
+        start_time = time.time()
+        img.save(path + "/tmp.png", compress_level=3)
+        print(f"Done in {time.time() - start_time} sec")
+        """
+
+        # reduce image
+        reducing_factor = 0.15
+        resized_width, resized_height = [
+            int(i * reducing_factor) for i in image_data.shape]
+        image_data = cv2.resize(
+            image_data, (resized_height, resized_width))
+
+        
+        img = Image.fromarray(image_data)
+        print("Saving ...")
+        start_time = time.time()
+        img.save(path + "/tmp.png", compress_level=3)
+        print(f"Done in {time.time() - start_time} sec")
+        
+
+        window['-TEXT_METRIC-'].update(
+            "Bluriness metric for this image :\n" +
+            "Laplacian variance measurement : " + str(bluriness_metric.blurre_lapace_var(path + "/tmp.png")) + " arb. \n" +
+            # bits to kiloBytes
+            "JPEG size measurement : " + str(bluriness_metric.blurre_JPEG_size_b(path + "/tmp.png") / 8 / 1000) + " kB \n\n" +
+            "Image position :\n" + str(pos_camera) + "\n")
+
+        # To display img after
+        img = _photo_image(image_data)
+
+    image_result.Release()
+
+    window['-IMAGE2-'].update(data=img)
+
+
 # Run the Event Loop
 while True:
-    event, values = window.read()
+    update()
+    event, values = window.read(timeout=3000)
 
     if event == "Exit" or event == sg.WIN_CLOSED:
         break
@@ -212,57 +263,9 @@ while True:
     elif event == "-GAIN-":
         control_flip_camera.configure_gain(cam, window['-GAIN-'].get())
 
-    elif event == "Update":
-        image_result = cam.GetNextImage(1000)
-
-        if image_result.IsIncomplete():
-            raise Exception('Image incomplete with image status %d ...' %
-                            image_result.GetImageStatus())
-
-        else:
-            image_data = image_result.GetNDArray()
-
-            # Save image
-            # SLOW
-            img = Image.fromarray(image_data)
-            print("Saving ...")
-            start_time = time.time()
-            img.save(path + "/tmp.png", compress_level=3)
-            print(f"Done in {time.time() - start_time} sec")
-
-            window['-TEXT_METRIC-'].update(
-                "Bluriness metric for this image :\n" +
-                "Laplacian variance measurement : " + str(bluriness_metric.blurre_lapace_var(path + "/tmp.png")) + " arb. \n" +
-                # bits to kiloBytes
-                "JPEG size measurement : " + str(bluriness_metric.blurre_JPEG_size_b(path + "/tmp.png") / 8 / 1000) + " kB \n\n" +
-                "Image position :\n" + str(pos_camera) + "\n")
-
-            # reduce image
-            reducing_factor = 0.15
-            resized_width, resized_height = [
-                int(i * reducing_factor) for i in image_data.shape]
-            image_data = cv2.resize(
-                image_data, (resized_height, resized_width))
-
-            """
-            img = Image.fromarray(image_data)
-            print("Saving ...")
-            start_time = time.time()
-            img.save(path + "/tmp.png", compress_level=3)
-            print(f"Done in {time.time() - start_time} sec")
-            """
-
-            # To display img after
-            img = _photo_image(image_data)
-
-        image_result.Release()
-
-        window['-IMAGE2-'].update(data=img)
-
     elif event in {"-LEFT-", "-RIGHT-", "-UP-", "-DOWN-", "-UP2-", "-DOWN2-"}:
         step_focus = window['-STEP_FOCUS-'].get()
         move_along_axis(pos_camera, event, step_focus)
-
 
 cam.EndAcquisition()
 cam.DeInit()

@@ -1,13 +1,58 @@
 import PySpin
 import sys
 
-def init_camera(cam):
+def init_camera_test(cam):
     try:
         cam.Init()
         if cam.AcquisitionMode.GetAccessMode() != PySpin.RW:
             raise Exception('Unable to set acquisition mode to continuous. Aborting...')
 
         cam.AcquisitionMode.SetValue(PySpin.AcquisitionMode_Continuous)
+        cam.BeginAcquisition()
+
+    except PySpin.SpinnakerException as ex:
+        raise Exception('Error: %s' % ex)
+
+def init_camera(cam):
+    try:
+        nodemap_tldevice = cam.GetTLDeviceNodeMap()
+        cam.Init()
+        nodemap = cam.GetNodeMap()
+        
+        sNodemap = cam.GetTLStreamNodeMap()
+
+        # Change bufferhandling mode to NewestOnly
+        node_bufferhandling_mode = PySpin.CEnumerationPtr(sNodemap.GetNode('StreamBufferHandlingMode'))
+        if not PySpin.IsAvailable(node_bufferhandling_mode) or not PySpin.IsWritable(node_bufferhandling_mode):
+            raise Exception('Unable to set stream buffer handling mode.. Aborting...')
+
+        # Retrieve entry node from enumeration node
+        node_newestonly = node_bufferhandling_mode.GetEntryByName('NewestOnly')
+        if not PySpin.IsAvailable(node_newestonly) or not PySpin.IsReadable(node_newestonly):
+            raise Exception('Unable to set stream buffer handling mode.. Aborting...')
+
+        # Retrieve integer value from entry node
+        node_newestonly_mode = node_newestonly.GetValue()
+
+        # Set integer value from entry node as new value of enumeration node
+        node_bufferhandling_mode.SetIntValue(node_newestonly_mode)
+
+        node_acquisition_mode = PySpin.CEnumerationPtr(nodemap.GetNode('AcquisitionMode'))
+        if not PySpin.IsAvailable(node_acquisition_mode) or not PySpin.IsWritable(node_acquisition_mode):
+            raise Exception('Unable to set acquisition mode to continuous (enum retrieval). Aborting...')
+
+        # Retrieve entry node from enumeration node
+        node_acquisition_mode_continuous = node_acquisition_mode.GetEntryByName('Continuous')
+        if not PySpin.IsAvailable(node_acquisition_mode_continuous) or not PySpin.IsReadable(
+                node_acquisition_mode_continuous):
+            raise Exception('Unable to set acquisition mode to continuous (entry retrieval). Aborting...')
+
+        # Retrieve integer value from entry node
+        acquisition_mode_continuous = node_acquisition_mode_continuous.GetValue()
+
+        # Set integer value from entry node as new value of enumeration node
+        node_acquisition_mode.SetIntValue(acquisition_mode_continuous)
+
         cam.BeginAcquisition()
 
     except PySpin.SpinnakerException as ex:
