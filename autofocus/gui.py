@@ -253,25 +253,40 @@ class Canvas(FigureCanvasTkAgg):
         self.canvas.pack(side='top', fill='both', expand=1)
 
 def smart_z_stack(pos_camera):
-    range_first_curve = 10
+    print("i)")
+    range_first_curve = 16
     step = 20
     sharpness_values_by_z = np.array([])
     for i in range(range_first_curve):
+        print(i)
         val = get_bluriness_metric()
         move_along_axis(pos_camera, "-UP2-", step)
         sharpness_values_by_z = np.concatenate((sharpness_values_by_z, np.array([val])))
         time.sleep(3)
-        print("done")
-        
-    
-    print(sharpness_values_by_z)
+
+    # Back to initial state
     move_along_axis(pos_camera, "-DOWN2-", step*range_first_curve)
-    print(get_bluriness_metric())
+
+
+    print("ii)")
+    range_second_curve = 8
+    second_shorter_curve_by_z = np.array([])
     
-    print("i)")
+    for i in range(range_second_curve):
+            print(i)
+            val = get_bluriness_metric()
+            move_along_axis(pos_camera, "-UP2-", step)
+            second_shorter_curve_by_z = np.concatenate((second_shorter_curve_by_z, np.array([val])))
+            time.sleep(3)
+
+    # Back to initial state
+    move_along_axis(pos_camera, "-DOWN2-", step*range_second_curve)
+    
     fig = Figure()
-    ax = fig.add_subplot(1,1, 1)
+    ax = fig.add_subplot(1, 2, 1)
     ax.plot(range(range_first_curve), sharpness_values_by_z)
+    ax = fig.add_subplot(1, 2, 2)
+    ax.plot(range(range_second_curve), second_shorter_curve_by_z)
     fig.tight_layout()
     canvas = Canvas(fig, window2['figCanvas'].Widget)
     canvas.draw() 
@@ -279,15 +294,6 @@ def smart_z_stack(pos_camera):
     window2.refresh()
 
     '''
-    raise Exception()
-
-    range_second_curve = 4
-    second_shorter_curve_by_z = np.array([[104488, 104488, 126399, 120399], np.arange(range_second_curve) + 1])
-    print("ii)")
-    plt.plot(sharpness_values_by_z[1], sharpness_values_by_z[0])
-    plt.plot(second_shorter_curve_by_z[1], second_shorter_curve_by_z[0])
-    plt.show()
-
     backlash = np.mean(second_shorter_curve_by_z[1] - sharpness_values_by_z[1][:range_second_curve])
     print("Backlash = ", backlash)
 
