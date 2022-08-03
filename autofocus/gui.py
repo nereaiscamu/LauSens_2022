@@ -3,12 +3,13 @@ from PIL import Image, ImageTk
 import bluriness_metric
 import control_flip_camera
 import PySpin
-import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 import os
 import numpy as np
 import cv2
 import serial
 import time
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 # Arduino init
 arduino = serial.Serial(port='COM3', baudrate=9600, timeout=.1)
@@ -47,7 +48,7 @@ path = os.path.dirname(os.path.abspath(__file__))
 
 # Logo
 size = (100, 50)
-im = Image.open(path + "/sensUs.png")
+im = Image.open(path + "/lausens.png")
 im = im.resize(size, resample=Image.BICUBIC)
 
 # Video / Image stream
@@ -65,7 +66,7 @@ cam = cam_list[0]
 control_flip_camera.init_camera(cam)
 
 sens_us_logo = [
-    [sg.Image(size=size, key='-LOGO-')]
+    [sg.Image(size=size, key='-LOGO-', background_color = "white")]
 ]
 
 explanations = [
@@ -94,7 +95,7 @@ print_metric = [
 ]
 
 img_to_print = [
-    [sg.Image(size=(300, 500), key='-IMAGE2-')]
+    [sg.Image(size=(547, 820), key='-IMAGE2-')] # resized_width, resized_height
 ]
 
 
@@ -114,10 +115,18 @@ layout = [
     ]
 ]
 
+layout2 = [[sg.Canvas(key='figCanvas')],]
+
 sg.theme('SystemDefault')
 
+AppFont = 'Any 10'
 window = sg.Window("LauSens - Autofocus Interface",
-                   layout, resizable=True, no_titlebar=False, auto_size_buttons=True).Finalize()
+                   layout, resizable=True, no_titlebar=False, auto_size_buttons=True, font=AppFont).Finalize()
+
+window2 = sg.Window("LauSens - Autofocus Interface",
+                   layout2, resizable=True, no_titlebar=False, auto_size_buttons=True, font=AppFont).Finalize()
+
+window2.set_alpha(0)
 
 image = ImageTk.PhotoImage(image=im)
 window['-LOGO-'].update(data=image)
@@ -194,6 +203,114 @@ def autofocus_simple(pos_camera):
             optimum = True
 
 
+def get_bluriness_metric():
+    image_result = cam.GetNextImage(1000)
+
+    if image_result.IsIncomplete():
+        raise Exception('Image incomplete with image status %d ...' %
+                        image_result.GetImageStatus())
+
+    else:
+        image_data = image_result.GetNDArray()
+        image_result.Release()
+
+        # Save image
+        # SLOW
+        """
+        img = Image.fromarray(image_data)
+        print("Saving ...")
+        start_time = time.time()
+        img.save(path + "/tmp.png", compress_level=3)
+        print(f"Done in {time.time() - start_time} sec")
+        """
+
+        # reduce image
+        reducing_factor = 0.15
+        resized_width, resized_height = [
+            int(i * reducing_factor) for i in image_data.shape]
+        image_data = cv2.resize(
+            image_data, (resized_height, resized_width))
+        
+        img = Image.fromarray(image_data)
+        img.save(path + "/tmp.png", compress_level=3)
+
+        # Testing purpose
+        img = _photo_image(image_data)
+        window['-IMAGE2-'].update(data=img)
+        window.refresh()
+    
+    # TODO Choose metric to use
+    # return bluriness_metric.blurre_JPEG_size_b(path + "/tmp.png") / 8 / 1000
+    return bluriness_metric.blurre_lapace_var(path + "/tmp.png")
+
+class Canvas(FigureCanvasTkAgg):
+    """
+    Create a canvas for matplotlib pyplot under tkinter/PySimpleGUI canvas
+    """
+    def __init__(self, figure=None, master=None):
+        super().__init__(figure=figure, master=master)
+        self.canvas = self.get_tk_widget()
+        self.canvas.pack(side='top', fill='both', expand=1)
+
+def smart_z_stack(pos_camera):
+    range_first_curve = 10
+    step = 20
+    sharpness_values_by_z = np.array([])
+    for i in range(range_first_curve):
+        val = get_bluriness_metric()
+        move_along_axis(pos_camera, "-UP2-", step)
+        sharpness_values_by_z = np.concatenate((sharpness_values_by_z, np.array([val])))
+        time.sleep(3)
+        print("done")
+        
+    
+    print(sharpness_values_by_z)
+    move_along_axis(pos_camera, "-DOWN2-", step*range_first_curve)
+    print(get_bluriness_metric())
+    
+    print("i)")
+    fig = Figure()
+    ax = fig.add_subplot(1,1, 1)
+    ax.plot(range(range_first_curve), sharpness_values_by_z)
+    fig.tight_layout()
+    canvas = Canvas(fig, window2['figCanvas'].Widget)
+    canvas.draw() 
+    window2.set_alpha(1)
+    window2.refresh()
+
+    '''
+    raise Exception()
+
+    range_second_curve = 4
+    second_shorter_curve_by_z = np.array([[104488, 104488, 126399, 120399], np.arange(range_second_curve) + 1])
+    print("ii)")
+    plt.plot(sharpness_values_by_z[1], sharpness_values_by_z[0])
+    plt.plot(second_shorter_curve_by_z[1], second_shorter_curve_by_z[0])
+    plt.show()
+
+    backlash = np.mean(second_shorter_curve_by_z[1] - sharpness_values_by_z[1][:range_second_curve])
+    print("Backlash = ", backlash)
+
+    print("iii)")
+    focal_point_below_stack_ctr = True
+    estimate_focal_point = np.argmax(sharpness_values_by_z[0])
+
+    while(focal_point_below_stack_ctr):
+        # move to a position below 
+        # TODO
+        # collect a stack of 9 images with their sharpness + z-position
+        # TODO
+        stack_9_img = np.array()
+        while(int(stack_9_img.shape[0]/2) > estimate_focal_point):
+            estimate_focal_point = np.argmax(stack_9_img[0])
+            # if above center of the stack, move up and collect another image
+            # TODO
+            estimate_focal_point = np.argmax(stack_9_img[0])
+        if(int(stack_9_img.shape[0]/2) >= estimate_focal_point):
+            focal_point_below_stack_ctr = False
+    '''
+
+
 pos_camera = np.array([0, 0, 0])
 
 def update():
@@ -255,7 +372,7 @@ while True:
         break
     elif event == "Autofocus":
         print("perform autofocus")
-        autofocus_simple(pos_camera)
+        smart_z_stack(pos_camera)
 
     elif event == "-EXP_TIME-":
         control_flip_camera.configure_exposure(cam, window['-EXP_TIME-'].get())
@@ -275,3 +392,4 @@ cam_list.Clear()
 system.ReleaseInstance()
 
 window.close()
+window2.close()
