@@ -33,14 +33,14 @@ for i=1:length(files)
    % gcf call to imwrite : this DOES remove white border
    % WORKING
    F = getframe(gca);
-   imwrite(F.cdata, strcat(new_name{1}, 'g', '.jpg')); % convert to a .png
+   %imwrite(F.cdata, strcat(new_name{1}, 'g', '.jpg')); % convert to a .png
    imwrite(F.cdata, strcat(new_name{1}, 'h', '.png')); % convert to a .png
    
    % Default call to exportgraphics : this DOES remove (most of) white border
    % ! require matlab 2020a or greater & crash on matlab online!
    % ALMOST WORKING (a tiny white border left)
    % CAN SPECIFY PIXEL DENSITY (thus image quality)
-   exportgraphics(fig, strcat(new_name{1}, 'i', '.jpg'));
+   %exportgraphics(fig, strcat(new_name{1}, 'i', '.jpg'));
    exportgraphics(fig, strcat(new_name{1}, 'j', '.png'));
 
    % Default call to export_fig : NOT TESTED

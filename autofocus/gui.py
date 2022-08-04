@@ -253,6 +253,7 @@ def autofocus_simple(pos_camera):
             move_along_axis(pos_camera, "-UP2-", step)
             focus = True
 
+
 def get_bluriness_metric():
     image_result = cam.GetNextImage(1000)
 

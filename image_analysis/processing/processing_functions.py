@@ -44,7 +44,7 @@ def open_images(path):
 
     for i, filename in enumerate(files):
     #for filename in sorted(os.listdir(path)):
-        if filename.endswith('.jpg') or filename.endswith('.png') or filename.endswith('.jpeg'):
+        if filename.endswith('.jpg') or filename.endswith('.png') or filename.endswith('.jpeg') :
             img_path = os.path.join(path, filename)
             time_creation.append(os.stat(filename).st_ctime)
             #print(img_path)
@@ -52,7 +52,7 @@ def open_images(path):
             img = np.array(Image.open(img_path))[:,:,1] #changed by NC to run with other camera images
             imgs.append(img) #appending the image to the list
 
-        elif filename.endswith('tiff') or filename.endswith('tif'):
+        elif filename.endswith('tiff') or filename.endswith('tif') or filename.endswith('.bmp'):
             #imgs[i,:,:] = np.array(io.imread(filename))
             img = np.array(io.imread(filename))[:,:,1] #changed by NC to work with other camera images
             imgs.append(img)
@@ -62,9 +62,26 @@ def open_images(path):
         
     return imgs, time_creation
 
+def open_images_NC(path):
+
+    print('\n Opening images '+str(path)+' ...')
+    
+    os.chdir(path)  #TODO: NOT SURE ABOUT THIS
+    files = sorted(filter(os.path.isfile, os.listdir(path)), key=os.path.getctime)  # ordering the images by date of creation
+
+    #imgs = np.zeros((len(files), 3648, 5472))  # list with all the images (jpg or png). TODO: set to size of image
+    imgs = []
+
+    for i, filename in enumerate(files):
+    #for filename in sorted(os.listdir(path)):
+        img = cv2.imread(filename, cv2.IMREAD_GRAYSCALE) #changed by NC to run with other camera images
+        imgs.append(img) 
+    
+    return imgs
+
 #files.sort(key=os.path.getctime)
 
-def select_ROI(ROI_PATH, scale_f = 4, RADIUS = 500):
+def select_ROI(ROI_PATH, scale_f = 4, RADIUS = 300):
     """
     Function to select ROIs
     input:
@@ -75,7 +92,27 @@ def select_ROI(ROI_PATH, scale_f = 4, RADIUS = 500):
         ROIs: array with x, y, radius of size (num_ROIs, 3)
         """
         
-    image_size = (int(5472/scale_f), int(3648/scale_f))
+    #image_size = (int(5472/scale_f), int(3648/scale_f))
+    image_size = (int(4104/scale_f), int(3006/scale_f))
+    small_ROIs = execute_roi(ROI_PATH, image_size, int(RADIUS/scale_f))  # returned as x, y, radius
+    ROIs = np.array(small_ROIs)*scale_f  # x, y, radius
+    print('ROIs:\n', ROIs)
+    
+    return ROIs
+
+def select_ROI_NC(ROI_PATH, val1, val2, RADIUS, scale_f = 4):
+    """
+    Function to select ROIs
+    input:
+        ROI_PATH: path where the image to which select the ROI is placed
+        radius: radius of the ROI
+        scale_f: scaling, adapt to laptop (to see full screen)
+    output:
+        ROIs: array with x, y, radius of size (num_ROIs, 3)
+        """
+        
+    #image_size = (int(1379/scale_f), int(1011/scale_f))
+    image_size = (int(val1/scale_f), int(val2/scale_f))
     small_ROIs = execute_roi(ROI_PATH, image_size, int(RADIUS/scale_f))  # returned as x, y, radius
     ROIs = np.array(small_ROIs)*scale_f  # x, y, radius
     print('ROIs:\n', ROIs)
