@@ -2,9 +2,14 @@ import PySimpleGUI as sg
 from PIL import Image, ImageTk
 import bluriness_metric
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import control_flip_camera
 import PySpin
 from matplotlib.figure import Figure
+=======
+import PySpin
+import matplotlib.pyplot as plt
+>>>>>>> Stashed changes
 =======
 import PySpin
 import matplotlib.pyplot as plt
@@ -14,6 +19,7 @@ import numpy as np
 import cv2
 import serial
 import time
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
@@ -71,6 +77,8 @@ cam = cam_list[0]
 # Init camera
 control_flip_camera.init_camera(cam)
 =======
+=======
+>>>>>>> Stashed changes
 
 # Arduino init
 arduino = serial.Serial(port='COM3', baudrate=9600, timeout=.1)
@@ -161,6 +169,7 @@ explanations = [
 
 print_metric = [
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     [sg.Text(key='-TEXT_METRIC-')],
     [sg.Button("↑", pad=(25, 0, 0, 0), key='-UP-'),
     sg.Button("↑", pad=(10, 0, 0, 0), key='-UP2-')],
@@ -190,6 +199,18 @@ img_to_print = [
     [sg.Button("↑", pad  = (25, 0, 0, 0), key='-UP-'), sg.Button("↑", pad  = (10, 0, 0, 0), key='-UP2-')],
     [sg.Button("←", key='-LEFT-'), sg.Button("→", key='-RIGHT-')],
     [sg.Button("↓", key='-DOWN-', pad  = (25, 0, 0, 0)), sg.Button("↓", pad  = (10, 0, 0, 0), key='-DOWN2-')]
+=======
+    [sg.Button("Update"), sg.Button("Autofocus")],
+    [sg.Text(key='-TEXT_METRIC-')],
+    [sg.Text("\nStep focus : \n"), sg.Spin([10*i for i in range(21)], initial_value = 50 ,pad = (10, 0, 0, 0), key = '-STEP_FOCUS-', font = 100)],
+    [sg.Button("↑", pad  = (25, 0, 0, 0), key='-UP-'), sg.Button("↑", pad  = (10, 0, 0, 0), key='-UP2-')],
+    [sg.Button("←", key='-LEFT-'), sg.Button("→", key='-RIGHT-')],
+    [sg.Button("↓", key='-DOWN-', pad  = (25, 0, 0, 0)), sg.Button("↓", pad  = (10, 0, 0, 0), key='-DOWN2-')]
+]
+
+img_to_print = [
+    [sg.Image(size=(300, 500), key='-IMAGE2-')]
+>>>>>>> Stashed changes
 ]
 
 img_to_print = [
@@ -479,6 +500,9 @@ def _photo_image(image: np.ndarray):
     height, width = image.shape
     data = f'P5 {width} {height} 255 '.encode() + image.astype(np.uint8).tobytes()
     return ImageTk.PhotoImage(width=width, height=height, data=data, format='PPM')
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 # Run the Event Loop
@@ -490,6 +514,7 @@ while True:
         break
     elif event == "Autofocus":
         print("perform autofocus")
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
         smart_z_stack(pos_camera)
 
@@ -503,6 +528,8 @@ while True:
         step_focus = window['-STEP_FOCUS-'].get()
         move_along_axis(pos_camera, event, step_focus)
 =======
+=======
+>>>>>>> Stashed changes
     elif event == "Update":
         # print(values["-IN-"])
         # im2 = Image.open(values["-IN-"])
@@ -571,6 +598,9 @@ while True:
         com = "04 " + str(window['-STEP_FOCUS-'].get()).zfill(4) +" zbw"
         move(com)
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 cam.EndAcquisition()

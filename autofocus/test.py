@@ -1,4 +1,5 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import logging
 import sangaboard
 
@@ -16,6 +17,8 @@ sb.move_rel([1000,0,0])
 sb.position
 =======
 <<<<<<< Updated upstream
+=======
+>>>>>>> Stashed changes
 import logging
 import sangaboard
 
@@ -48,5 +51,8 @@ sb = sangaboard.Sangaboard("COM3")
 sb.move_rel([1000,0,0])
 sb.position
 >>>>>>> Stashed changes
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 exit()

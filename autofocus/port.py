@@ -1,4 +1,5 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import serial.tools.list_ports
 #import serial
 import sys
@@ -37,6 +38,8 @@ for port in ports:
         pass
 =======
 <<<<<<< Updated upstream
+=======
+>>>>>>> Stashed changes
 import serial.tools.list_ports
 #import serial
 import sys
@@ -111,5 +114,8 @@ for port in ports:
     except (OSError, serial.SerialException):
         pass
 >>>>>>> Stashed changes
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 print("Availible COM Ports: " + str(result))

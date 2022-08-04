@@ -1,4 +1,5 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 from sangaboard import Sangaboard
 import serial 
 import time
@@ -60,6 +61,8 @@ arduino.flushInput()
 arduino.flushOutput()
 =======
 <<<<<<< Updated upstream
+=======
+>>>>>>> Stashed changes
 from sangaboard import Sangaboard
 import serial 
 import time
@@ -180,5 +183,8 @@ while (focus):
 arduino.flushInput()
 arduino.flushOutput()
 >>>>>>> Stashed changes
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 arduino.close()
