@@ -76,10 +76,10 @@ explanations = [
 print_metric = [
     [sg.Text(key='-TEXT_METRIC-')],
     [sg.Button("↑", pad=(25, 0, 0, 0), key='-UP-'),
-    sg.Button("↑", pad=(10, 0, 0, 0), key='-UP2-')],
+    sg.Button("↑", pad=(30, 0, 0, 0), key='-UP2-')],
     [sg.Button("←", key='-LEFT-'), sg.Button("→", key='-RIGHT-')],
     [sg.Button("↓", key='-DOWN-', pad=(25, 0, 0, 0)),
-    sg.Button("↓", pad=(10, 0, 0, 0), key='-DOWN2-')],
+    sg.Button("↓", pad=(30, 0, 0, 0), key='-DOWN2-')],
     [sg.Text('_'*15)],
     [sg.Text("Parameters :")],
     [sg.Text("Step focus :"), sg.Spin([10*i for i in range(21)],
@@ -125,7 +125,6 @@ window = sg.Window("LauSens - Autofocus Interface",
 
 window2 = sg.Window("LauSens - Autofocus Interface",
                    layout2, resizable=True, no_titlebar=False, auto_size_buttons=True, font=AppFont).Finalize()
-
 window2.set_alpha(0)
 
 image = ImageTk.PhotoImage(image=im)
@@ -143,7 +142,7 @@ def _photo_image(image: np.ndarray):
     ) + image.astype(np.uint8).tobytes()
     return ImageTk.PhotoImage(width=width, height=height, data=data, format='PPM')
 
-
+# Same as get_bluriness_metric but doesn't update image
 def get_metric():
     image_result = cam.GetNextImage(1000)
     if image_result.IsIncomplete():
@@ -159,31 +158,33 @@ def get_metric():
         image_data = cv2.resize(image_data, (resized_height, resized_width))
 
         img = Image.fromarray(image_data)
-        img.save(path + "/tmp.png", compress_level=1)
+        img.save(path + "/tmp.png", compress_level=3)
     image_result.Release()
+    window.refresh()
+
     return bluriness_metric.blurre_lapace_var(path + "/tmp.png")
 
-
-def autofocus_simple(pos_camera):
+# Fast autofocus but can fall into a local maxima
+def autofocus_fast(pos_camera):
     optimum = False
     opt_val = 0
-    step = 100
+    step = 100 # Increase if focus is far
     while optimum == False:
-        print("start")
-        print("current : ", get_metric())
+        print("Round")
+        print("current : ", get_bluriness_metric())
 
         move_along_axis(pos_camera, "-UP2-", step)
-        time.sleep(5)
+        time.sleep(4)
         above = get_metric()
         print("above : ", above)
 
         move_along_axis(pos_camera, "-DOWN2-", step)
-        time.sleep(5)
+        time.sleep(4)
         opt_val = get_metric()
         print("current (opti) : ", opt_val)
 
         move_along_axis(pos_camera, "-DOWN2-", step)
-        time.sleep(5)
+        time.sleep(4)
         below = get_metric()
         print("below : ", below)
 
@@ -191,17 +192,66 @@ def autofocus_simple(pos_camera):
             pass
         elif above >= opt_val and below <= opt_val:
             move_along_axis(pos_camera, "-UP2-", step)
-            time.sleep(5)
+            time.sleep(4)
             move_along_axis(pos_camera, "-UP2-", step)
-            time.sleep(5)
+            time.sleep(4)
         else:
             move_along_axis(pos_camera, "-UP2-", step)
-            time.sleep(5)
+            time.sleep(4)
             step = int(step / 2)
 
-        if abs(above - below) < 0.5:
+        if abs(above - below) < 3 or step < 10 or opt_val > 1500: # Stopping condition
             optimum = True
 
+# Improved autofocus
+def autofocus_simple(pos_camera):
+    # Must move camera below focal point (find maxima by left)
+    step = 20
+    down = False
+    range_curve = 4
+    while down == False:
+        sharpness_values_by_z = np.array([])
+        for i in range(range_curve):
+            print(i)
+            val = get_bluriness_metric()
+            move_along_axis(pos_camera, "-DOWN2-", step)
+            sharpness_values_by_z = np.concatenate((sharpness_values_by_z, np.array([val])))
+            time.sleep(3)
+        
+        print(sharpness_values_by_z)
+        if sharpness_values_by_z[0] > sharpness_values_by_z[range_curve - 1]:
+            down = True
+
+    range_curve = 16
+    sharpness_values_by_z = np.array([])
+    for i in range(range_curve):
+        print(i)
+        val = get_bluriness_metric()
+        move_along_axis(pos_camera, "-UP2-", step)
+        sharpness_values_by_z = np.concatenate((sharpness_values_by_z, np.array([val])))
+        time.sleep(6)
+
+    print(sharpness_values_by_z)
+    # Back to best state
+    estimate_focal_point = np.argmax(sharpness_values_by_z)
+    assert (step*(range_curve - estimate_focal_point)) < 10000
+    print(estimate_focal_point)
+    print(range_curve - estimate_focal_point)
+
+    move_along_axis(pos_camera, "-DOWN2-", step*(range_curve - estimate_focal_point))
+    time.sleep(15)
+    best = get_bluriness_metric()
+
+    focus = False
+    while focus == False:
+        move_along_axis(pos_camera, "-DOWN2-", step)
+        time.sleep(5)
+        tmp = (get_bluriness_metric())
+        if tmp > best:
+            best = tmp
+        else:
+            move_along_axis(pos_camera, "-UP2-", step)
+            focus = True
 
 def get_bluriness_metric():
     image_result = cam.GetNextImage(1000)
@@ -266,7 +316,8 @@ def smart_z_stack(pos_camera):
 
     # Back to initial state
     move_along_axis(pos_camera, "-DOWN2-", step*range_first_curve)
-
+    assert (step*range_first_curve) < 10000
+    time.sleep(6)
 
     print("ii)")
     range_second_curve = 8
@@ -281,11 +332,14 @@ def smart_z_stack(pos_camera):
 
     # Back to initial state
     move_along_axis(pos_camera, "-DOWN2-", step*range_second_curve)
+    time.sleep(6)
     
     fig = Figure()
     ax = fig.add_subplot(1, 2, 1)
+    ax.set_title("i) Sharpness curve")
     ax.plot(range(range_first_curve), sharpness_values_by_z)
     ax = fig.add_subplot(1, 2, 2)
+    ax.set_title("ii) Second sharpness curve, to estimate backlash")
     ax.plot(range(range_second_curve), second_shorter_curve_by_z)
     fig.tight_layout()
     canvas = Canvas(fig, window2['figCanvas'].Widget)
@@ -293,28 +347,67 @@ def smart_z_stack(pos_camera):
     window2.set_alpha(1)
     window2.refresh()
 
-    '''
-    backlash = np.mean(second_shorter_curve_by_z[1] - sharpness_values_by_z[1][:range_second_curve])
+    backlash = 0
+    tmp = round(np.abs(np.sum(second_shorter_curve_by_z - sharpness_values_by_z[:range_second_curve])))
+    for i in range(1, range_first_curve - range_second_curve - 1):
+        print(i)
+        if tmp > round(np.abs(np.sum(second_shorter_curve_by_z - sharpness_values_by_z[i:range_second_curve+i]))):
+            backlash = i
+            tmp = round(np.abs(np.sum(second_shorter_curve_by_z - sharpness_values_by_z[i:range_second_curve+i])))
     print("Backlash = ", backlash)
 
     print("iii)")
     focal_point_below_stack_ctr = True
-    estimate_focal_point = np.argmax(sharpness_values_by_z[0])
+    estimate_focal_point = np.argmax(sharpness_values_by_z)
+    print("Estimated focal point : ", estimate_focal_point)
+    below_val = 3
 
     while(focal_point_below_stack_ctr):
         # move to a position below 
-        # TODO
+        if step*(estimate_focal_point - below_val) > 9999:
+            raise Exception("Focal point is too far (TODO)")
+        move_along_axis(pos_camera, "-UP2-", step*(estimate_focal_point - below_val))
+
+        time.sleep(6)
         # collect a stack of 9 images with their sharpness + z-position
-        # TODO
-        stack_9_img = np.array()
-        while(int(stack_9_img.shape[0]/2) > estimate_focal_point):
-            estimate_focal_point = np.argmax(stack_9_img[0])
+        stack_9_img = np.array([])
+        for i in range(9):
+                print(i)
+                val = get_bluriness_metric()
+                move_along_axis(pos_camera, "-UP2-", step)
+                stack_9_img = np.concatenate((stack_9_img, np.array([val])))
+                time.sleep(3)
+
+        fig.clear(True)
+        ax = fig.add_subplot(2, 1, 1)
+        ax.set_title("iii) Stack of 9 images")
+        ax.margins(100, 0) 
+        ax.plot(range(9), stack_9_img) 
+        fig.tight_layout()
+        canvas = Canvas(fig, window2['figCanvas'].Widget)
+        canvas.draw() 
+        window2.refresh()
+
+        estimate_focal_point = np.argmax(stack_9_img[0])
+        print("Estimated focal point : ", estimate_focal_point)
+        x = input()
+
+        while(int(stack_9_img.shape[0]/2) < estimate_focal_point):
             # if above center of the stack, move up and collect another image
-            # TODO
+            move_along_axis(pos_camera, "-UP2-", step)
+            time.sleep(3)
+            val = get_bluriness_metric()
+            stack_9_img = np.concatenate((stack_9_img, np.array([val])))
+            stack_9_img = np.delete(stack_9_img, 0)
             estimate_focal_point = np.argmax(stack_9_img[0])
-        if(int(stack_9_img.shape[0]/2) >= estimate_focal_point):
+
+        if(int(stack_9_img.shape[0]/2) == estimate_focal_point):
             focal_point_below_stack_ctr = False
-    '''
+
+        print("Estimated focal point : ", estimate_focal_point)
+        x = input()
+        
+        raise Exception("Not implemented TODO")
 
 
 pos_camera = np.array([0, 0, 0])
@@ -378,7 +471,7 @@ while True:
         break
     elif event == "Autofocus":
         print("perform autofocus")
-        smart_z_stack(pos_camera)
+        autofocus_simple(pos_camera)
 
     elif event == "-EXP_TIME-":
         control_flip_camera.configure_exposure(cam, window['-EXP_TIME-'].get())
