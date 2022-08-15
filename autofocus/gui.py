@@ -13,16 +13,19 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 # Arduino init
 arduino = serial.Serial(port='COM3', baudrate=9600, timeout=.1)
-time.sleep(1) # Needed so that computer detect arduino (TODO can reduce it ?)
+time.sleep(1)  # Needed so that computer detect arduino (TODO can reduce it ?)
 # print(arduino) # Arduino info.
 
 # Move camera
+
+
 def move(com):
     arduino.write(com.encode("ascii"))
     time.sleep(0.05)
 
+
 def move_along_axis(pos_camera, dir, step_focus):
-    # format : 
+    # format :
     # delay (2 chars) + " " + focusStep (4 chars) + " " +  axisdirection (3 chars : x/y/z + fw/bw)
     # Example :
     # 04 0100 zfw
@@ -48,8 +51,9 @@ def move_along_axis(pos_camera, dir, step_focus):
         pos_camera -= np.array([0, 0, step_focus])
     move(com)
 
+
 # Absolute path of this file
-path = os.path.dirname(os.path.abspath(__file__))  
+path = os.path.dirname(os.path.abspath(__file__))
 
 # Logo
 size = (100, 50)
@@ -72,7 +76,7 @@ control_flip_camera.init_camera(cam)
 
 # Layout
 sens_us_logo = [
-    [sg.Image(size=size, key='-LOGO-', background_color = "white")]
+    [sg.Image(size=size, key='-LOGO-', background_color="white")]
 ]
 explanations = [
     [sg.Text("Explanations : Welcome to auto-focus user interface !")]
@@ -80,25 +84,27 @@ explanations = [
 print_metric = [
     [sg.Text(key='-TEXT_METRIC-')],
     [sg.Button("↑", pad=(25, 0, 0, 0), key='-UP-'),
-    sg.Button("↑", pad=(30, 0, 0, 0), key='-UP2-')],
+     sg.Button("↑", pad=(30, 0, 0, 0), key='-UP2-')],
     [sg.Button("←", key='-LEFT-'), sg.Button("→", key='-RIGHT-')],
     [sg.Button("↓", key='-DOWN-', pad=(25, 0, 0, 0)),
-    sg.Button("↓", pad=(30, 0, 0, 0), key='-DOWN2-')],
+     sg.Button("↓", pad=(30, 0, 0, 0), key='-DOWN2-')],
     [sg.Text('_'*15)],
     [sg.Text("Parameters :")],
     [sg.Text("Step focus :"), sg.Spin([10*i for i in range(21)],
-                                           initial_value=50, key='-STEP_FOCUS-', font=('Helvetica 12'), size = (3, 2)), 
+                                      initial_value=50, key='-STEP_FOCUS-', font=('Helvetica 12'), size=(3, 2)),
      sg.Text("Exposure time :"), sg.Spin([100*i for i in range(100, 200)],
-                                           initial_value=10332, key='-EXP_TIME-', font=('Helvetica 12'), change_submits = True)
-                                           ],
+                                         initial_value=10332, key='-EXP_TIME-', font=('Helvetica 12'), change_submits=True)
+     ],
 
     [sg.Text("         Gain :"), sg.Spin([i/10 for i in range(100, 300)],
-                                           initial_value=23.3, key='-GAIN-', font=('Helvetica 12'), change_submits = True)],
+                                         initial_value=23.3, key='-GAIN-', font=('Helvetica 12'), change_submits=True)],
     [sg.Text('_'*23)],
-    [sg.Button("AUTO-FOCUS", key="Autofocus")],
+    [sg.Button("AUTO-FOCUS", key="Autofocus"), sg.Button("IMG-PROC",
+                                                         key="imgproc"), sg.Button("MICRO-FLU", key="microflu")],
 ]
 img_to_print = [
-    [sg.Image(size=(547, 820), key='-IMAGE2-')] # resized_width, resized_height
+    # resized_width, resized_height
+    [sg.Image(size=(547, 820), key='-IMAGE2-')]
 ]
 
 # ----- Full layout -----
@@ -119,7 +125,7 @@ layout = [
 ]
 
 # Layout to display plots
-layout2 = [[sg.Canvas(key='figCanvas')],]
+layout2 = [[sg.Canvas(key='figCanvas')], ]
 
 sg.theme('SystemDefault')
 
@@ -128,7 +134,7 @@ window = sg.Window("LauSens - Autofocus Interface",
                    layout, resizable=True, no_titlebar=False, auto_size_buttons=True, font=AppFont).Finalize()
 
 window2 = sg.Window("LauSens - Autofocus Interface",
-                   layout2, resizable=True, no_titlebar=False, auto_size_buttons=True, font=AppFont).Finalize()
+                    layout2, resizable=True, no_titlebar=False, auto_size_buttons=True, font=AppFont).Finalize()
 window2.set_alpha(0)
 
 image = ImageTk.PhotoImage(image=im)
@@ -140,6 +146,8 @@ window['-TEXT_METRIC-'].update(
     "Image position (1 unit ≈ 0.65 μm) :\n(0, 0, 0)\n")
 
 # Convert np array image to Tkinter Image
+
+
 def _photo_image(image: np.ndarray):
     height, width = image.shape
     data = f'P5 {width} {height} 255 '.encode(
@@ -147,6 +155,8 @@ def _photo_image(image: np.ndarray):
     return ImageTk.PhotoImage(width=width, height=height, data=data, format='PPM')
 
 # Compute and return bluriness of current image (sent by camera)
+
+
 def get_bluriness_metric():
     image_result = cam.GetNextImage(1000)
 
@@ -164,21 +174,23 @@ def get_bluriness_metric():
         img = Image.fromarray(image_data)
         print("Saving ...")
         start_time = time.time()
-        img.save(path + "/tmp.png", compress_level=3) # TODO reduce compress_level -> faster but less precise
+        # TODO reduce compress_level -> faster but less precise
+        img.save(path + "/tmp.png", compress_level=3)
         print(f"Done in {time.time() - start_time} sec")
         """
 
-        # reduce image 
-        # - to display on interface 
+        # reduce image
+        # - to display on interface
         # - bluriness metric computed on this image will be faster
         reducing_factor = 0.15
         resized_width, resized_height = [
             int(i * reducing_factor) for i in image_data.shape]
         image_data = cv2.resize(
             image_data, (resized_height, resized_width))
-        
+
         img = Image.fromarray(image_data)
-        img.save(path + "/tmp.png", compress_level=3) # TODO reduce compress_level -> faster but less precise
+        # TODO reduce compress_level -> faster but less precise
+        img.save(path + "/tmp.png", compress_level=3)
 
         # --- ONLY DIFFERENCE WITH get_metric(): ---
         # Update image on interface (slow down)
@@ -186,7 +198,7 @@ def get_bluriness_metric():
         window['-IMAGE2-'].update(data=img)
 
         window.refresh()
-    
+
     # TODO Choose metric to use
     # return bluriness_metric.blurre_JPEG_size_b(path + "/tmp.png") / 8 / 1000
     return bluriness_metric.blurre_lapace_var(path + "/tmp.png")
@@ -194,6 +206,8 @@ def get_bluriness_metric():
 # Compute and return bluriness of current image (sent by camera)
 # Same as get_bluriness_metric but doesn't update image (i.e not displayed on interface)
 # TODO Remove get_metric() to have only get_bluriness_metric()
+
+
 def get_metric():
     image_result = cam.GetNextImage(1000)
     if image_result.IsIncomplete():
@@ -210,7 +224,8 @@ def get_metric():
         image_data = cv2.resize(image_data, (resized_height, resized_width))
 
         img = Image.fromarray(image_data)
-        img.save(path + "/tmp.png", compress_level=3) # TODO reduce compress_level -> faster but less precise
+        # TODO reduce compress_level -> faster but less precise
+        img.save(path + "/tmp.png", compress_level=3)
 
     window.refresh()
 
@@ -220,6 +235,8 @@ def get_metric():
 
 # Estimate time taken to send command and to move motors given a step value
 # Return value will be the time to wait after we send a command to move motor of this step
+
+
 def estimate_step_time(step):
     # Empirical measure
     # step 200 takes around 5 sec => sleep of 6
@@ -238,13 +255,16 @@ def estimate_step_time(step):
 # Fast autofocus but can fall into a local maxima
 # Principle :
 # Measure bluriness above, below and current position and go to in the direction that increase sharpness
+
+
 def autofocus_fast(pos_camera):
     optimum = False
     opt_val = 0
     # TODO Param 1 :
-    step = 100 # Increase if focus is far
+    step = 100  # Increase if focus is far
     # TODO Param 2 :
-    time_for_step = estimate_step_time(step)  # Time to wait after we send the command
+    # Time to wait after we send the command
+    time_for_step = estimate_step_time(step)
     while optimum == False:
         print("Round")
         print("current : ", get_bluriness_metric())
@@ -283,10 +303,12 @@ def autofocus_fast(pos_camera):
             step = int(step / 2)
 
         # TODO Param 3 :
-        if abs(above - below) < 3 or step < 10 or opt_val > 1500: # Stopping conditions
+        if abs(above - below) < 3 or step < 10 or opt_val > 1500:  # Stopping conditions
             optimum = True
 
 # Improved autofocus
+
+
 def autofocus_simple(pos_camera):
     # Must move camera below focal point (to find maxima by left)
     step = 20
@@ -294,47 +316,50 @@ def autofocus_simple(pos_camera):
 
     down = False
     # TODO Param 1 :
-    range_curve = 4 # Increase if very far autofocus
+    range_curve = 4  # Increase if very far autofocus
     while down == False:
         sharpness_values_by_z = np.array([])
         for i in range(range_curve):
             print(i)
             val = get_bluriness_metric()
             move_along_axis(pos_camera, "-DOWN2-", step)
-            sharpness_values_by_z = np.concatenate((sharpness_values_by_z, np.array([val])))
+            sharpness_values_by_z = np.concatenate(
+                (sharpness_values_by_z, np.array([val])))
             time.sleep(time_for_step)
-        
-        # Testing 
+
+        # Testing
         # print(sharpness_values_by_z)
 
-        if sharpness_values_by_z[0] > sharpness_values_by_z[range_curve - 1] :
+        if sharpness_values_by_z[0] > sharpness_values_by_z[range_curve - 1]:
             down = True
 
-    # Testing 
+    # Testing
     # print("Under focus (went to much DOWN2)")
 
     # TODO Param 2 :
-    range_curve = 16 # Must be > range_curve
+    range_curve = 16  # Must be > range_curve
     sharpness_values_by_z = np.array([])
     for i in range(range_curve):
         print(i)
         val = get_bluriness_metric()
         move_along_axis(pos_camera, "-UP2-", step)
-        sharpness_values_by_z = np.concatenate((sharpness_values_by_z, np.array([val])))
+        sharpness_values_by_z = np.concatenate(
+            (sharpness_values_by_z, np.array([val])))
         time.sleep(time_for_step)
 
-    # Testing 
+    # Testing
     # print(sharpness_values_by_z)
 
     # Back to best state
     estimate_focal_point = np.argmax(sharpness_values_by_z)
     assert (step*(range_curve - estimate_focal_point)) < 10000
-    
-    # Testing 
+
+    # Testing
     # print(estimate_focal_point)
     # print(range_curve - estimate_focal_point)
 
-    move_along_axis(pos_camera, "-DOWN2-", step*(range_curve - estimate_focal_point))
+    move_along_axis(pos_camera, "-DOWN2-", step *
+                    (range_curve - estimate_focal_point))
     time.sleep(time_for_step*(range_curve - estimate_focal_point))
     best = get_bluriness_metric()
 
@@ -351,10 +376,13 @@ def autofocus_simple(pos_camera):
             focus = True
 
 # Used to display plot on interface
+
+
 class Canvas(FigureCanvasTkAgg):
     """
     Create a canvas for matplotlib pyplot under tkinter/PySimpleGUI canvas
     """
+
     def __init__(self, figure=None, master=None):
         super().__init__(figure=figure, master=master)
         self.canvas = self.get_tk_widget()
@@ -362,6 +390,8 @@ class Canvas(FigureCanvasTkAgg):
 
 # Autofocus based on paper
 # TODO DO NOT USE STILL UNDER DEVELOPPMENT/TEST
+
+
 def smart_z_stack(pos_camera):
     print("i)")
     range_first_curve = 16
@@ -371,7 +401,8 @@ def smart_z_stack(pos_camera):
         print(i)
         val = get_bluriness_metric()
         move_along_axis(pos_camera, "-UP2-", step)
-        sharpness_values_by_z = np.concatenate((sharpness_values_by_z, np.array([val])))
+        sharpness_values_by_z = np.concatenate(
+            (sharpness_values_by_z, np.array([val])))
         time.sleep(3)
 
     # Back to initial state
@@ -382,18 +413,19 @@ def smart_z_stack(pos_camera):
     print("ii)")
     range_second_curve = 8
     second_shorter_curve_by_z = np.array([])
-    
+
     for i in range(range_second_curve):
         print(i)
         val = get_bluriness_metric()
         move_along_axis(pos_camera, "-UP2-", step)
-        second_shorter_curve_by_z = np.concatenate((second_shorter_curve_by_z, np.array([val])))
+        second_shorter_curve_by_z = np.concatenate(
+            (second_shorter_curve_by_z, np.array([val])))
         time.sleep(3)
 
     # Back to initial state
     move_along_axis(pos_camera, "-DOWN2-", step*range_second_curve)
     time.sleep(6)
-    
+
     fig = Figure()
     ax = fig.add_subplot(1, 2, 1)
     ax.set_title("i) Sharpness curve")
@@ -403,17 +435,19 @@ def smart_z_stack(pos_camera):
     ax.plot(range(range_second_curve), second_shorter_curve_by_z)
     fig.tight_layout()
     canvas = Canvas(fig, window2['figCanvas'].Widget)
-    canvas.draw() 
+    canvas.draw()
     window2.set_alpha(1)
     window2.refresh()
 
     backlash = 0
-    tmp = round(np.abs(np.sum(second_shorter_curve_by_z - sharpness_values_by_z[:range_second_curve])))
+    tmp = round(np.abs(np.sum(second_shorter_curve_by_z -
+                              sharpness_values_by_z[:range_second_curve])))
     for i in range(1, range_first_curve - range_second_curve - 1):
         print(i)
         if tmp > round(np.abs(np.sum(second_shorter_curve_by_z - sharpness_values_by_z[i:range_second_curve+i]))):
             backlash = i
-            tmp = round(np.abs(np.sum(second_shorter_curve_by_z - sharpness_values_by_z[i:range_second_curve+i])))
+            tmp = round(np.abs(np.sum(second_shorter_curve_by_z -
+                                      sharpness_values_by_z[i:range_second_curve+i])))
     print("Backlash = ", backlash)
 
     print("iii)")
@@ -423,29 +457,30 @@ def smart_z_stack(pos_camera):
     below_val = 3
 
     while(focal_point_below_stack_ctr):
-        # move to a position below 
+        # move to a position below
         if step*(estimate_focal_point - below_val) > 9999:
             raise Exception("Focal point is too far (TODO)")
-        move_along_axis(pos_camera, "-UP2-", step*(estimate_focal_point - below_val))
+        move_along_axis(pos_camera, "-UP2-", step *
+                        (estimate_focal_point - below_val))
 
         time.sleep(6)
         # collect a stack of 9 images with their sharpness + z-position
         stack_9_img = np.array([])
         for i in range(9):
-                print(i)
-                val = get_bluriness_metric()
-                move_along_axis(pos_camera, "-UP2-", step)
-                stack_9_img = np.concatenate((stack_9_img, np.array([val])))
-                time.sleep(3)
+            print(i)
+            val = get_bluriness_metric()
+            move_along_axis(pos_camera, "-UP2-", step)
+            stack_9_img = np.concatenate((stack_9_img, np.array([val])))
+            time.sleep(3)
 
         fig.clear(True)
         ax = fig.add_subplot(2, 1, 1)
         ax.set_title("iii) Stack of 9 images")
-        ax.margins(100, 0) 
-        ax.plot(range(9), stack_9_img) 
+        ax.margins(100, 0)
+        ax.plot(range(9), stack_9_img)
         fig.tight_layout()
         canvas = Canvas(fig, window2['figCanvas'].Widget)
-        canvas.draw() 
+        canvas.draw()
         window2.refresh()
 
         estimate_focal_point = np.argmax(stack_9_img[0])
@@ -467,14 +502,17 @@ def smart_z_stack(pos_camera):
             focal_point_below_stack_ctr = False
 
         print("Estimated focal point : ", estimate_focal_point)
-        
+
         # Testing
         # x = input() # gives time for debugging
+
 
 # Position of camera RELATIVE (when launching soft. position of camera is (0, 0, 0))
 pos_camera = np.array([0, 0, 0])
 
 # Update/display image and compute/display both bluriness metrics (JPEG size and Laplacian variance) on interace
+
+
 def update():
     image_result = cam.GetNextImage(1000)
 
@@ -492,7 +530,8 @@ def update():
         img = Image.fromarray(image_data)
         print("Saving ...")
         start_time = time.time()
-        img.save(path + "/tmp.png", compress_level=3) # TODO reduce compress_level -> faster but less precise
+        # TODO reduce compress_level -> faster but less precise
+        img.save(path + "/tmp.png", compress_level=3)
         print(f"Done in {time.time() - start_time} sec")
         """
 
@@ -503,19 +542,20 @@ def update():
         image_data = cv2.resize(
             image_data, (resized_height, resized_width))
 
-        
         img = Image.fromarray(image_data)
-        # Testing 
+        # Testing
         # # to measure time to update (most of time taken is to save image for computing bluriness)
         # print("Saving ...")
         # start_time = time.time()
-        img.save(path + "/tmp.png", compress_level=3) # TODO reduce compress_level -> faster but less precise
+        # TODO reduce compress_level -> faster but less precise
+        img.save(path + "/tmp.png", compress_level=3)
         # print(f"Done in {time.time() - start_time} sec")
 
         window['-TEXT_METRIC-'].update(
             "Bluriness metric for this image :\n" +
             "Laplacian variance measurement : " + str(bluriness_metric.blurre_lapace_var(path + "/tmp.png")) + " arb. \n" +
-            "JPEG size measurement : " + str(bluriness_metric.blurre_JPEG_size_b(path + "/tmp.png") / 8 / 1000) + " kB \n\n" + # bits to kiloBytes
+            # bits to kiloBytes
+            "JPEG size measurement : " + str(bluriness_metric.blurre_JPEG_size_b(path + "/tmp.png") / 8 / 1000) + " kB \n\n" +
             "Image position (1 unit ≈ 0.65 μm) :\n" + str(pos_camera) + " ≈ " + str(pos_camera * 0.65) + "\n")
 
         # To display img after
@@ -531,19 +571,29 @@ while True:
 
     if event == "Exit" or event == sg.WIN_CLOSED:
         break
-    elif event == "Autofocus": # Autofocus
+    elif event == "Autofocus":  # Autofocus
         print("perform autofocus")
         # AUTOFOCUS ALGO TO CHOOSE :
         autofocus_simple(pos_camera)
         # autofocus_fast(pos_camera)
 
+    elif event == "imgproc":  # Image Processing
+        print("perform image processing")
+        # TODO: add IP code
+        pass
+
+    elif event == "microflu":  # Microfluidics
+        print("perform microfluidics")
+        # TODO: add microflu code
+        pass
+
     elif event == "-EXP_TIME-":  # Exposure time
         control_flip_camera.configure_exposure(cam, window['-EXP_TIME-'].get())
 
-    elif event == "-GAIN-": # Gain
+    elif event == "-GAIN-":  # Gain
         control_flip_camera.configure_gain(cam, window['-GAIN-'].get())
 
-    elif event in {"-LEFT-", "-RIGHT-", "-UP-", "-DOWN-", "-UP2-", "-DOWN2-"}: # Arrows to move camera
+    elif event in {"-LEFT-", "-RIGHT-", "-UP-", "-DOWN-", "-UP2-", "-DOWN2-"}:  # Arrows to move camera
         step_focus = window['-STEP_FOCUS-'].get()
         move_along_axis(pos_camera, event, step_focus)
 
