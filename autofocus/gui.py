@@ -90,7 +90,7 @@ print_metric = [
      sg.Button("↓", pad=(30, 0, 0, 0), key='-DOWN2-')],
     [sg.Text('_'*15)],
     [sg.Text("Parameters :")],
-    [sg.Text("Step focus :"), sg.Spin([10*i for i in range(21)],
+    [sg.Text("Step focus :"), sg.Spin([10*i for i in range(51)],
                                       initial_value=50, key='-STEP_FOCUS-', font=('Helvetica 12'), size=(3, 2)),
      sg.Text("Exposure time :"), sg.Spin([100*i for i in range(100, 200)],
                                          initial_value=10332, key='-EXP_TIME-', font=('Helvetica 12'), change_submits=True)
