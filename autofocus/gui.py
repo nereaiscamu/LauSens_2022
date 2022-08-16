@@ -2,6 +2,7 @@ import PySimpleGUI as sg
 from PIL import Image, ImageTk
 import bluriness_metric
 import control_flip_camera
+import microflu
 import PySpin
 from matplotlib.figure import Figure
 import os
@@ -82,13 +83,29 @@ explanations = [
     [sg.Text("Explanations : Welcome to auto-focus user interface !")]
 ]
 print_metric = [
-    [sg.Text(key='-TEXT_METRIC-')],
-    [sg.Button("↑", pad=(25, 0, 0, 0), key='-UP-'),
-     sg.Button("↑", pad=(30, 0, 0, 0), key='-UP2-')],
-    [sg.Button("←", key='-LEFT-'), sg.Button("→", key='-RIGHT-')],
-    [sg.Button("↓", key='-DOWN-', pad=(25, 0, 0, 0)),
-     sg.Button("↓", pad=(30, 0, 0, 0), key='-DOWN2-')],
-    [sg.Text('_'*15)],
+    [sg.TabGroup([[sg.Tab("Microfluidics", [[sg.Button("FLUSH", key="full_flush_microflu",  pad=(10, 10, 10, 0)), sg.Button("MICROFLUIDICS", key="microflu")]]), 
+        sg.Tab("Autofocus", [[sg.Text(key='-TEXT_METRIC-')],
+        [sg.Button("↑", pad=(25, 0, 0, 0), key='-UP-'),
+        sg.Button("↑", pad=(30, 0, 0, 0), key='-UP2-')],
+        [sg.Button("←", key='-LEFT-'), sg.Button("→", key='-RIGHT-')],
+        [sg.Button("↓", key='-DOWN-', pad=(25, 0, 0, 0)),
+        sg.Button("↓", pad=(30, 0, 0, 0), key='-DOWN2-')],
+        [sg.T("\n", size=(1 , 1))],
+        [sg.Button("AUTO-FOCUS", key="Autofocus", pad=(10, 10) ), sg.Button("SET TO 0", key="set_to_zero", pad=(10, 10)), sg.Button("MOVE TO 0", key="move_to_zero", pad=(10, 10) )], 
+        
+        ]),
+        sg.Tab("Image processing", [[sg.Button("IMAGE-PROCESSING", key="imgproc",  pad=(120, 10))]]),
+        ]], expand_x=True)],
+
+    # [sg.Button("↑", pad=(25, 0, 0, 0), key='-UP-'),
+    # sg.Button("↑", pad=(30, 0, 0, 0), key='-UP2-')],
+    # [sg.Button("←", key='-LEFT-'), sg.Button("→", key='-RIGHT-')],
+    # [sg.Button("↓", key='-DOWN-', pad=(25, 0, 0, 0)),
+    # sg.Button("↓", pad=(30, 0, 0, 0), key='-DOWN2-')],
+
+
+
+    [sg.Text('-'*15 + "   Camera settings   " + '-'*15)],
     [sg.Text("Parameters :")],
     [sg.Text("Step focus :"), sg.Spin([10*i for i in range(51)],
                                       initial_value=50, key='-STEP_FOCUS-', font=('Helvetica 12'), size=(3, 2)),
@@ -98,9 +115,12 @@ print_metric = [
 
     [sg.Text("         Gain :"), sg.Spin([i/10 for i in range(100, 300)],
                                          initial_value=23.3, key='-GAIN-', font=('Helvetica 12'), change_submits=True)],
-    [sg.Text('_'*23)],
-    [sg.Button("AUTO-FOCUS", key="Autofocus"), sg.Button("IMG-PROC",
-                                                         key="imgproc"), sg.Button("MICRO-FLU", key="microflu")],
+    [sg.T("\n")],
+
+    # TODO Remove
+    # [sg.Button("Full flush", key="full_flush_microflu"), sg.Button("Microflu", key="microflu")],
+    # [sg.Button("AUTO-FOCUS", key="Autofocus")],
+    # [sg.Button("IMG-PROC", key="imgproc")],
 ]
 img_to_print = [
     # resized_width, resized_height
@@ -120,7 +140,7 @@ layout = [
         sg.Column(img_to_print),
         sg.VSeperator(),
         sg.Column(print_metric, element_justification='left',
-                  expand_x=True, size=(100, 400)),
+                  expand_x=True, size=(100, 547)),
     ]
 ]
 
@@ -577,14 +597,28 @@ while True:
         autofocus_simple(pos_camera)
         # autofocus_fast(pos_camera)
 
+    elif event == "set_to_zero":  # Set current position to be the initial position
+        print("perform set to 0")
+        pos_camera = np.array([0, 0, 0])   
+
+    elif event == "move_to_zero":  # Set current position to be the initial position
+        print("perform move to 0")
+        while(pos_camera[0] > 0):
+            move_along_axis(pos_camera, "UP", step_focus)
+
+        pos_camera = np.array([0, 0, 0])  
+
     elif event == "imgproc":  # Image Processing
         print("perform image processing")
         # TODO: add IP code
         pass
 
+    elif event == "full_flush_microflu":  # Microfluidics full flush
+        print("perform full flush")
+        pass
+
     elif event == "microflu":  # Microfluidics
-        print("perform microfluidics")
-        # TODO: add microflu code
+        print("perform microflu")
         pass
 
     elif event == "-EXP_TIME-":  # Exposure time
