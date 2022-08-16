@@ -3,6 +3,7 @@ from PIL import Image, ImageTk
 import bluriness_metric
 import control_flip_camera
 import microflu
+import imgproc
 import PySpin
 from matplotlib.figure import Figure
 import os
@@ -14,6 +15,11 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 # Arduino init
 arduino = serial.Serial(port='COM3', baudrate=9600, timeout=.1)
+# Pump init
+try:
+    lsp = serial.Serial("COM4", 9600, timeout=1000)
+except:
+    print("Pump not connected")
 time.sleep(1)  # Needed so that computer detect arduino (TODO can reduce it ?)
 # print(arduino) # Arduino info.
 
@@ -80,10 +86,10 @@ sens_us_logo = [
     [sg.Image(size=size, key='-LOGO-', background_color="white")]
 ]
 explanations = [
-    [sg.Text("Explanations : Welcome to auto-focus user interface !")]
+    [sg.Text("Welcome on our user interface ! \nThis GUI aims at controlling our system made of microfluidcs pump, an autofocusing microscope and an image processing to detect IL-6 spots.")]
 ]
 print_metric = [
-    [sg.TabGroup([[sg.Tab("Microfluidics", [[sg.Button("FLUSH", key="full_flush_microflu",  pad=(10, 10, 10, 0)), sg.Button("MICROFLUIDICS", key="microflu")]]), 
+    [sg.TabGroup([[sg.Tab("Microfluidics", [[sg.Button("Sample measurement", key="sample_measurement",  pad=(10, 10, 10, 0)), sg.Button("Filling", key="filling_microflu")], [sg.Button("FLUSH", key="full_flush_microflu",  pad=(10, 0, 0, 0)), sg.Button("flush", key="flush_microflu")]]), 
         sg.Tab("Autofocus", [[sg.Text(key='-TEXT_METRIC-')],
         [sg.Button("↑", pad=(25, 0, 0, 0), key='-UP-'),
         sg.Button("↑", pad=(30, 0, 0, 0), key='-UP2-')],
@@ -91,10 +97,10 @@ print_metric = [
         [sg.Button("↓", key='-DOWN-', pad=(25, 0, 0, 0)),
         sg.Button("↓", pad=(30, 0, 0, 0), key='-DOWN2-')],
         [sg.T("\n", size=(1 , 1))],
-        [sg.Button("AUTO-FOCUS", key="Autofocus", pad=(10, 10) ), sg.Button("SET TO 0", key="set_to_zero", pad=(10, 10)), sg.Button("MOVE TO 0", key="move_to_zero", pad=(10, 10) )], 
+        [sg.Button("Autofocus", key="Autofocus", pad=(10, 10) ), sg.Button("Set to 0", key="set_to_zero", pad=(10, 10)), sg.Button("Move to 0", key="move_to_zero", pad=(10, 10) )], 
         
         ]),
-        sg.Tab("Image processing", [[sg.Button("IMAGE-PROCESSING", key="imgproc",  pad=(120, 10))]]),
+        sg.Tab("Image processing", [[sg.Button("Live acquisition", key="acquisition",  pad=(10, 10)), sg.Button("Process", key="imgproc",  pad=(10, 10))]]),
         ]], expand_x=True)],
 
     # [sg.Button("↑", pad=(25, 0, 0, 0), key='-UP-'),
@@ -105,8 +111,8 @@ print_metric = [
 
 
 
-    [sg.Text('-'*15 + "   Camera settings   " + '-'*15)],
-    [sg.Text("Parameters :")],
+    [sg.Text(' '*15 + '-'*15 + "   Camera settings   " + '-'*15)],
+    [sg.Text(" ")],
     [sg.Text("Step focus :"), sg.Spin([10*i for i in range(51)],
                                       initial_value=50, key='-STEP_FOCUS-', font=('Helvetica 12'), size=(3, 2)),
      sg.Text("Exposure time :"), sg.Spin([100*i for i in range(100, 200)],
@@ -125,6 +131,7 @@ print_metric = [
 img_to_print = [
     # resized_width, resized_height
     [sg.Image(size=(547, 820), key='-IMAGE2-')]
+    # [sg.Graph((820, 547), (-50, -50), (50, 50), key='-GRAPH-', drag_submits=False)]
 ]
 
 # ----- Full layout -----
@@ -138,6 +145,7 @@ layout = [
     ],
     [
         sg.Column(img_to_print),
+        # sg.Graph((100, 100), (-50, -50), (50, 50), key='-GRAPH-', drag_submits=False),
         sg.VSeperator(),
         sg.Column(print_metric, element_justification='left',
                   expand_x=True, size=(100, 547)),
@@ -166,8 +174,6 @@ window['-TEXT_METRIC-'].update(
     "Image position (1 unit ≈ 0.65 μm) :\n(0, 0, 0)\n")
 
 # Convert np array image to Tkinter Image
-
-
 def _photo_image(image: np.ndarray):
     height, width = image.shape
     data = f'P5 {width} {height} 255 '.encode(
@@ -216,6 +222,7 @@ def get_bluriness_metric():
         # Update image on interface (slow down)
         img = _photo_image(image_data)
         window['-IMAGE2-'].update(data=img)
+        # window['-GRAPH-'].DrawImage(filename= "tmp.PNG")
 
         window.refresh()
 
@@ -530,9 +537,15 @@ def smart_z_stack(pos_camera):
 # Position of camera RELATIVE (when launching soft. position of camera is (0, 0, 0))
 pos_camera = np.array([0, 0, 0])
 
+# Live acquisition enable
+live_acqu = False
+acqu_step = 0
+acqu_time = 0
+
+def live_acqu():
+    
+
 # Update/display image and compute/display both bluriness metrics (JPEG size and Laplacian variance) on interace
-
-
 def update():
     image_result = cam.GetNextImage(1000)
 
@@ -582,6 +595,8 @@ def update():
         img = _photo_image(image_data)
 
     window['-IMAGE2-'].update(data=img)
+    # window['-GRAPH-'].DrawImage(filename = "tmp.png", location = (-50, 50))
+    # window['-GRAPH-'].DrawImage(data = image_data , location = (-50, 50))
 
 
 # Run the Event Loop
@@ -603,23 +618,86 @@ while True:
 
     elif event == "move_to_zero":  # Set current position to be the initial position
         print("perform move to 0")
+        step_focus = window['-STEP_FOCUS-'].get()
+        time_for_step = estimate_step_time(step_focus)
+        while(pos_camera[0] < 0):
+            move_along_axis(pos_camera, "-LEFT-", step_focus)
+            time.sleep(time_for_step)
         while(pos_camera[0] > 0):
-            move_along_axis(pos_camera, "UP", step_focus)
+            move_along_axis(pos_camera, "-RIGHT-", step_focus)
+            time.sleep(time_for_step)
+        while(pos_camera[1] < 0):
+            move_along_axis(pos_camera, "-UP-", step_focus)
+            time.sleep(time_for_step)
+        while(pos_camera[1] > 0):
+            move_along_axis(pos_camera, "-DOWN-", step_focus)
+            time.sleep(time_for_step)
+
+        step_focus = 10
+        time_for_step = estimate_step_time(step_focus)
+        while(pos_camera[0] < 0):
+            move_along_axis(pos_camera, "-LEFT-", step_focus)
+            time.sleep(time_for_step)
+        while(pos_camera[0] > 0):
+            move_along_axis(pos_camera, "-RIGHT-", step_focus)
+            time.sleep(time_for_step)
+        while(pos_camera[1] < 0):
+            move_along_axis(pos_camera, "-UP-", step_focus)
+            time.sleep(time_for_step)
+        while(pos_camera[1] > 0):
+            move_along_axis(pos_camera, "-DOWN-", step_focus)
+            time.sleep(time_for_step)
+
+        step_focus = window['-STEP_FOCUS-'].get()
 
         pos_camera = np.array([0, 0, 0])  
 
-    elif event == "imgproc":  # Image Processing
-        print("perform image processing")
-        # TODO: add IP code
-        pass
+    elif event == "acquisition":  # Image acquisition
+        print("perform image acquisition")
+        live_acqu = True
+        acqu_time = time.time()
+
+        # TODO continue live aqucisition to avoid sleep of 1 minute and stop soft.
+        
+        
+        if acqu_step <= 10:
+            print(acqu_step)
+            acqu_step += 1
+            image_result = cam.GetNextImage(1000)
+
+            if image_result.IsIncomplete():
+                raise Exception('Image incomplete with image status %d ...' %
+                                image_result.GetImageStatus())
+
+            else:
+                image_data = image_result.GetNDArray()
+                image_result.Release()
+
+                # Save image
+                img = Image.fromarray(image_data)
+                print("Saving ...")
+                img.save(path + "/img_proc/saved_img_at_min_" + str(i) +".png")
+
+                img = _photo_image(image_data)
+
+                window['-IMAGE2-'].update(data=img)
+                window.refresh()
 
     elif event == "full_flush_microflu":  # Microfluidics full flush
         print("perform full flush")
-        pass
+        microflu.clean_all(lsp)
 
-    elif event == "microflu":  # Microfluidics
-        print("perform microflu")
-        pass
+    elif event == "flush_microflu":  # Microfluidics flush
+        print("perform flush")
+        microflu.clean_sample_cartridge_trash(lsp) # TODO verify
+
+    elif event == "filling_microflu":  # Microfluidics filling
+        print("perform filling")
+        microflu.filling_pipes(lsp)
+
+    elif event == "sample_measurement":  # Microfluidics sample_measurement
+        print("perform sample measurement") # TODO verify
+        microflu.main(lsp)
 
     elif event == "-EXP_TIME-":  # Exposure time
         control_flip_camera.configure_exposure(cam, window['-EXP_TIME-'].get())
