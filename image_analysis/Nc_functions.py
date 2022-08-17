@@ -176,6 +176,8 @@ def linear_model(signal):
     print(f"slope: {model.coef_}")
     print(f"intercept: {model.intercept_}")
     print(f"coefficient of determination: {r_sq}")
+    plt.plot(x,y)
+    plt.show()
     return(model.coef_, r_sq)
 
 
