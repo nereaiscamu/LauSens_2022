@@ -542,9 +542,6 @@ live_acqu = False
 acqu_step = 0
 acqu_time = 0
 
-def live_acqu():
-    
-
 # Update/display image and compute/display both bluriness metrics (JPEG size and Laplacian variance) on interace
 def update():
     image_result = cam.GetNextImage(1000)
@@ -576,6 +573,17 @@ def update():
             image_data, (resized_height, resized_width))
 
         img = Image.fromarray(image_data)
+
+        if live_acqu == True and time.time() - acqu_time >= 60:
+            print("Saving image " + str(acqu_step) + " at time " + str(time.time() - acqu_time))
+            img.save(path + "/img_proc/images/saved_img_" + str(i) +".png")
+            acqu_step += 1
+            acqu_time = time.time()
+            if acqu_step >= 10:
+                live_acqu = False
+                acqu_step = 0
+                acqu_time = 0
+
         # Testing
         # # to measure time to update (most of time taken is to save image for computing bluriness)
         # print("Saving ...")
@@ -650,39 +658,15 @@ while True:
 
         step_focus = window['-STEP_FOCUS-'].get()
 
-        pos_camera = np.array([0, 0, 0])  
-
     elif event == "acquisition":  # Image acquisition
         print("perform image acquisition")
         live_acqu = True
         acqu_time = time.time()
 
-        # TODO continue live aqucisition to avoid sleep of 1 minute and stop soft.
-        
-        
-        if acqu_step <= 10:
-            print(acqu_step)
-            acqu_step += 1
-            image_result = cam.GetNextImage(1000)
-
-            if image_result.IsIncomplete():
-                raise Exception('Image incomplete with image status %d ...' %
-                                image_result.GetImageStatus())
-
-            else:
-                image_data = image_result.GetNDArray()
-                image_result.Release()
-
-                # Save image
-                img = Image.fromarray(image_data)
-                print("Saving ...")
-                img.save(path + "/img_proc/saved_img_at_min_" + str(i) +".png")
-
-                img = _photo_image(image_data)
-
-                window['-IMAGE2-'].update(data=img)
-                window.refresh()
-
+    elif event == "imgproc":  # Image processing
+        print("perform image processing")
+        imgproc.process()
+    
     elif event == "full_flush_microflu":  # Microfluidics full flush
         print("perform full flush")
         microflu.clean_all(lsp)
