@@ -1,4 +1,3 @@
-import sys 
 import os
 
 #path_code = os.path.dirname(__file__)
@@ -7,25 +6,20 @@ import os
 #sys.path.append(os.path.abspath(path_code))
 
 import numpy as np
-import matplotlib.pyplot as plt
 from tkinter import filedialog, Tk
-from PIL import Image
 from processing_functions import *
-from Analyse_results_with_connected_components import Measure
-import cv2
 from Functions_2022 import *
 
 #from analysis.Select_ROI import execute_roi
 #from AcquireAndSave import execute_capture
 #from AcquireAndDisplay import execute_focus
 
-def process():
+def process(path, n_spots, n_bg):
     ## OPENING FILES
-    ORIGINAL_FOLDER = os.path.dirname(os.path.realpath(__file__))
+    ORIGINAL_FOLDER = path
     print('THIS IS ORIGINAL FOLDER PATH', str(ORIGINAL_FOLDER))
     IMG_FOLDER = os.path.join('img_proc/images') #Folder where the images taken by the camera to be processed will be located
-    IMG_PROCESSED_FOLDER = os.path.abspath('img_proc/images_processed')  #Folder where the resulting images will be located
-
+    IMG_PROCESSED_FOLDER = os.path.abspath('/img_proc/images_processed')  #Folder where the resulting images will be located
 
     # 1. Select folder with images
     root = Tk()
@@ -46,13 +40,13 @@ def process():
     print('Shape imgs', np.shape(imgs))
     os.chdir(ORIGINAL_FOLDER)
 
-    #%%
-    n_spots = input("How many spots are visible? ")
-    n_bg = input("How many background regions to use? ")
-    n_ROIs =int(n_spots) + int(n_bg)
+    #
+    print("Nbr of spots visible set to : ", n_spots)
+    print("Nbr of background regions to use set to : ", n_bg)
+    n_ROIs = int(n_spots) + int(n_bg)
     ROIs = Select_ROI_Dynamic(ROI_PATH, n_ROIs, scale_f = 4 )
 
-    #%%
+    #
     width = height = int(ROIs[0,2]*2.5)
     radius = ROIs[0][2]
 

@@ -18,6 +18,7 @@ arduino = serial.Serial(port='COM3', baudrate=9600, timeout=.1)
 # Pump init
 try:
     lsp = serial.Serial("COM4", 9600, timeout=1000)
+    microflu.initialize_LSPOne(lsp)
 except:
     print("Pump not connected")
 time.sleep(1)  # Needed so that computer detect arduino (TODO can reduce it ?)
@@ -59,13 +60,13 @@ def move_along_axis(pos_camera, dir, step_focus):
     move(com)
 
 
-# Absolute path of this file
+# Absolute path of this file folder
 path = os.path.dirname(os.path.abspath(__file__))
 
 # Logo
 size = (100, 50)
 im = Image.open(path + "/lausens.png")
-im = im.resize(size, resample=Image.BICUBIC)
+im = im.resize(size, resample=Image.Resampling.BICUBIC)
 
 # Video / Image stream
 print("Connection with camera")
@@ -86,7 +87,7 @@ sens_us_logo = [
     [sg.Image(size=size, key='-LOGO-', background_color="white")]
 ]
 explanations = [
-    [sg.Text("Welcome on our user interface ! \nThis GUI aims at controlling our system made of microfluidcs pump, an autofocusing microscope and an image processing to detect IL-6 spots.")]
+    [sg.Text("Welcome on our user interface ! \nThis GUI aims at controlling our system made of microfluidics pump, an autofocusing microscope and an image processing to detect IL-6 spots.")]
 ]
 print_metric = [
     [sg.TabGroup([[sg.Tab("Microfluidics", [[sg.Button("Sample measurement", key="sample_measurement",  pad=(10, 10, 10, 0)), sg.Button("Filling", key="filling_microflu")], [sg.Button("FLUSH", key="full_flush_microflu",  pad=(10, 0, 0, 0)), sg.Button("flush", key="flush_microflu")]]), 
@@ -100,20 +101,12 @@ print_metric = [
         [sg.Button("Autofocus", key="Autofocus", pad=(10, 10) ), sg.Button("Set to 0", key="set_to_zero", pad=(10, 10)), sg.Button("Move to 0", key="move_to_zero", pad=(10, 10) )], 
         
         ]),
-        sg.Tab("Image processing", [[sg.Button("Live acquisition", key="acquisition",  pad=(10, 10)), sg.Button("Process", key="imgproc",  pad=(10, 10))]]),
+        sg.Tab("Image processing", [[sg.Text("Numer of spot :"), sg.Spin([i for i in range(6)], initial_value=3, pad = (0, 10, 0, 0),key='-nbr_spot-', font=('Helvetica 12'), change_submits=True)], [sg.Text("Background number :"), sg.Spin([i for i in range(6)], initial_value=3, key='-nbr_bg-', font=('Helvetica 12'), change_submits=True)], [sg.Button("Live acquisition", key="acquisition",  pad=(10, 10)), sg.Button("Process", key="imgproc",  pad=(10, 10))]]),
         ]], expand_x=True)],
-
-    # [sg.Button("↑", pad=(25, 0, 0, 0), key='-UP-'),
-    # sg.Button("↑", pad=(30, 0, 0, 0), key='-UP2-')],
-    # [sg.Button("←", key='-LEFT-'), sg.Button("→", key='-RIGHT-')],
-    # [sg.Button("↓", key='-DOWN-', pad=(25, 0, 0, 0)),
-    # sg.Button("↓", pad=(30, 0, 0, 0), key='-DOWN2-')],
-
-
 
     [sg.Text(' '*15 + '-'*15 + "   Camera settings   " + '-'*15)],
     [sg.Text(" ")],
-    [sg.Text("Step focus :"), sg.Spin([10*i for i in range(51)],
+    [sg.Text("Step focus :"), sg.Spin([5*i for i in range(102)],
                                       initial_value=50, key='-STEP_FOCUS-', font=('Helvetica 12'), size=(3, 2)),
      sg.Text("Exposure time :"), sg.Spin([100*i for i in range(100, 200)],
                                          initial_value=10332, key='-EXP_TIME-', font=('Helvetica 12'), change_submits=True)
@@ -123,10 +116,6 @@ print_metric = [
                                          initial_value=23.3, key='-GAIN-', font=('Helvetica 12'), change_submits=True)],
     [sg.T("\n")],
 
-    # TODO Remove
-    # [sg.Button("Full flush", key="full_flush_microflu"), sg.Button("Microflu", key="microflu")],
-    # [sg.Button("AUTO-FOCUS", key="Autofocus")],
-    # [sg.Button("IMG-PROC", key="imgproc")],
 ]
 img_to_print = [
     # resized_width, resized_height
@@ -565,6 +554,19 @@ def update():
         print(f"Done in {time.time() - start_time} sec")
         """
 
+        global live_acqu
+        global acqu_time
+        global acqu_step
+        if live_acqu == True and time.time() - acqu_time >= 60:
+            print("Saving image " + str(acqu_step) + " at time " + str(time.time() - acqu_time))
+            Image.fromarray(image_data).save(path + "/img_proc/images/saved_img_" + str(acqu_step) +".png")
+            acqu_step += 1
+            acqu_time = time.time()
+            if acqu_step >= 10:
+                live_acqu = False
+                acqu_step = 0
+                acqu_time = 0
+
         # reduce image
         reducing_factor = 0.15
         resized_width, resized_height = [
@@ -574,43 +576,29 @@ def update():
 
         img = Image.fromarray(image_data)
 
-        if live_acqu == True and time.time() - acqu_time >= 60:
-            print("Saving image " + str(acqu_step) + " at time " + str(time.time() - acqu_time))
-            img.save(path + "/img_proc/images/saved_img_" + str(i) +".png")
-            acqu_step += 1
-            acqu_time = time.time()
-            if acqu_step >= 10:
-                live_acqu = False
-                acqu_step = 0
-                acqu_time = 0
-
         # Testing
         # # to measure time to update (most of time taken is to save image for computing bluriness)
         # print("Saving ...")
         # start_time = time.time()
         # TODO reduce compress_level -> faster but less precise
-        img.save(path + "/tmp.png", compress_level=3)
+        # img.save(path + "/tmp.png", optimize=True, compress_level=1)
         # print(f"Done in {time.time() - start_time} sec")
-
         window['-TEXT_METRIC-'].update(
-            "Bluriness metric for this image :\n" +
-            "Laplacian variance measurement : " + str(bluriness_metric.blurre_lapace_var(path + "/tmp.png")) + " arb. \n" +
+            # "Bluriness metric for this image :\n" +
+            # "Laplacian variance measurement : " + str(bluriness_metric.blurre_lapace_var(path + "/tmp.png")) + " arb. \n" +
             # bits to kiloBytes
-            "JPEG size measurement : " + str(bluriness_metric.blurre_JPEG_size_b(path + "/tmp.png") / 8 / 1000) + " kB \n\n" +
+            # "JPEG size measurement : " + str(bluriness_metric.blurre_JPEG_size_b(path + "/tmp.png") / 8 / 1000) + " kB \n\n" +
             "Image position (1 unit ≈ 0.65 μm) :\n" + str(pos_camera) + " ≈ " + str(pos_camera * 0.65) + "\n")
 
         # To display img after
         img = _photo_image(image_data)
 
     window['-IMAGE2-'].update(data=img)
-    # window['-GRAPH-'].DrawImage(filename = "tmp.png", location = (-50, 50))
-    # window['-GRAPH-'].DrawImage(data = image_data , location = (-50, 50))
-
 
 # Run the Event Loop
 while True:
     update()
-    event, values = window.read(timeout=3000)
+    event, values = window.read(timeout=500) # TODO Timeout opt
 
     if event == "Exit" or event == sg.WIN_CLOSED:
         break
@@ -626,46 +614,35 @@ while True:
 
     elif event == "move_to_zero":  # Set current position to be the initial position
         print("perform move to 0")
-        step_focus = window['-STEP_FOCUS-'].get()
-        time_for_step = estimate_step_time(step_focus)
-        while(pos_camera[0] < 0):
-            move_along_axis(pos_camera, "-LEFT-", step_focus)
-            time.sleep(time_for_step)
-        while(pos_camera[0] > 0):
-            move_along_axis(pos_camera, "-RIGHT-", step_focus)
-            time.sleep(time_for_step)
-        while(pos_camera[1] < 0):
-            move_along_axis(pos_camera, "-UP-", step_focus)
-            time.sleep(time_for_step)
-        while(pos_camera[1] > 0):
-            move_along_axis(pos_camera, "-DOWN-", step_focus)
-            time.sleep(time_for_step)
-
-        step_focus = 10
-        time_for_step = estimate_step_time(step_focus)
-        while(pos_camera[0] < 0):
-            move_along_axis(pos_camera, "-LEFT-", step_focus)
-            time.sleep(time_for_step)
-        while(pos_camera[0] > 0):
-            move_along_axis(pos_camera, "-RIGHT-", step_focus)
-            time.sleep(time_for_step)
-        while(pos_camera[1] < 0):
-            move_along_axis(pos_camera, "-UP-", step_focus)
-            time.sleep(time_for_step)
-        while(pos_camera[1] > 0):
-            move_along_axis(pos_camera, "-DOWN-", step_focus)
-            time.sleep(time_for_step)
-
-        step_focus = window['-STEP_FOCUS-'].get()
+        index_step = 0
+        step_list = [500, 200, 50, 10, 5]
+        while(pos_camera[0] != 0 or pos_camera[1] != 0):
+            step_focus = step_list[index_step]
+            time_for_step = estimate_step_time(step_focus)
+            while(pos_camera[0] < 0 and step_focus <= pos_camera[0]):
+                move_along_axis(pos_camera, "-LEFT-", step_focus)
+                time.sleep(time_for_step)
+            while(pos_camera[0] > 0 and step_focus <= pos_camera[0]):
+                move_along_axis(pos_camera, "-RIGHT-", step_focus)
+                time.sleep(time_for_step)
+            while(pos_camera[1] < 0 and step_focus <= pos_camera[1]):
+                move_along_axis(pos_camera, "-UP-", step_focus)
+                time.sleep(time_for_step)
+            while(pos_camera[1] > 0 and step_focus <= pos_camera[1]):
+                move_along_axis(pos_camera, "-DOWN-", step_focus)
+                time.sleep(time_for_step)
+            if (step_focus > pos_camera[0] or step_focus > pos_camera[1] and index_step <= len(step_list) - 1):
+                index_step += 1
 
     elif event == "acquisition":  # Image acquisition
         print("perform image acquisition")
         live_acqu = True
-        acqu_time = time.time()
+        acqu_step = 0
+        acqu_time = time.time() - 60
 
     elif event == "imgproc":  # Image processing
         print("perform image processing")
-        imgproc.process()
+        imgproc.process(path, window['-nbr_spot-'].get(), window['-nbr_bg-'].get())
     
     elif event == "full_flush_microflu":  # Microfluidics full flush
         print("perform full flush")
@@ -681,7 +658,7 @@ while True:
 
     elif event == "sample_measurement":  # Microfluidics sample_measurement
         print("perform sample measurement") # TODO verify
-        microflu.main(lsp)
+        microflu.dispense_blocking_and_sample(lsp)
 
     elif event == "-EXP_TIME-":  # Exposure time
         control_flip_camera.configure_exposure(cam, window['-EXP_TIME-'].get())
@@ -692,6 +669,8 @@ while True:
     elif event in {"-LEFT-", "-RIGHT-", "-UP-", "-DOWN-", "-UP2-", "-DOWN2-"}:  # Arrows to move camera
         step_focus = window['-STEP_FOCUS-'].get()
         move_along_axis(pos_camera, event, step_focus)
+
+    
 
 cam.EndAcquisition()
 cam.DeInit()
