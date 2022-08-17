@@ -4,14 +4,11 @@ Created on Wed Aug  3 11:52:21 2022
 
 @author: nerea
 """
-import sys 
-import os
-
 #path_code = os.path.dirname(__file__)
-
 #important to import file that are not here
 #sys.path.append(os.path.abspath(path_code))
-
+import sys 
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from tkinter import filedialog, Tk
@@ -20,11 +17,11 @@ from processing.processing_functions import *
 from analysis.Analyse_results_with_connected_components import Measure
 import cv2
 from Nc_functions import *
+from sklearn.linear_model import LinearRegression
 
 #from analysis.Select_ROI import execute_roi
 #from AcquireAndSave import execute_capture
 #from AcquireAndDisplay import execute_focus
-
 
 #%%
 ## OPENING FILES
@@ -69,5 +66,31 @@ open_imgs = opening(smoothed, iterations = 1)
 #bin_imgs = thresh_Otsu_Bin(open_imgs)
 masks = create_circular_mask(open_imgs, radius, ROIs)
 masked_imgs = apply_mask(open_imgs, masks)
+result = pixel_ratio(masked_imgs, masks, n_spots, n_ROIs)
+slope, R2 = linear_model(result)
 
-result = pixel_ratio(masked_imgs, masks, n_spots)
+''' HERE WE SHOULD TRY DIFFERENT MODELS TO FIT THE DATA AND THEN WE CAN ALSO KNOW 
+AN ESTIMATE OF THE CONCENTRATION 
+Also, we can use the connectivity to check the number of NP
+Link here: https://stackoverflow.com/questions/35854197/how-to-use-opencvs-connectedcomponentswithstats-in-python'''
+
+#%%
+
+img_test = open_imgs[6]
+connectivity = 8  # You need to choose 4 or 8 for connectivity type
+num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(img_test , connectivity , cv2.CV_32S)
+nb_pixels = 0
+for c in range(0, num_labels):
+    if c == 0:
+        #print("background")
+        continue
+    else:
+        #print("Signal")
+        area = stats[c, cv2.CC_STAT_AREA]
+        if((area>9) & (area<90)): #TODO: before it was 3, 30
+            nb_pixels = nb_pixels + area 
+            
+labels_img = Image.fromarray(labels)            
+labels_img.show()             
+percent_pixels = nb_pixels / stats[0, cv2.CC_STAT_AREA]
+print(percent_pixels)
