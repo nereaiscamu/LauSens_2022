@@ -114,6 +114,8 @@ def create_circular_mask(img_list, radius, ROIs):
     return mask_list
 
 
+
+
 def apply_mask(img_list, masks):
     lst = []
     for i, mask in enumerate(masks):
@@ -125,11 +127,10 @@ def apply_mask(img_list, masks):
         lst.append(list(masked_imgs))
     return lst
 
-
-
-
-def pixel_ratio(img_list, masks, n_spots):
+def pixel_ratio(img_list, masks, n_spots, n_ROIs):
+    
     # 1- Create a blank mask
+    
     mask = masks[0]
     img_type = img_list[0][0]
     blank = np.zeros([np.shape(img_type)[0],np.shape(img_type)[1] ],dtype=np.uint8)
@@ -137,27 +138,81 @@ def pixel_ratio(img_list, masks, n_spots):
     masked_blank = blank.copy()
     masked_blank[~mask] = 0
     num_white_mask = cv2.countNonZero(masked_blank) 
-
     
     # 2- Compute mean signal inside each image masked for each ROI
-
-    spot_signal_list = []
-    bg_signal_list = []
-    for i in range(np.shape(img_list)[0]):
-        for j, img in enumerate(img_list[i]):
-            num_white = cv2.countNonZero(img)  
-            if i<int(n_spots):
+    
+    num_imgs = np.shape(img_list[0])[0]
+    
+    sig_per_img = []
+    bg_per_img = []
+    signal = []
+    for i in range(num_imgs):
+        spot_signal_list = []
+        bg_signal_list = []
+        print(i)
+        for j in range(n_ROIs):
+            num_white = cv2.countNonZero(img_list[j][i])  
+            if j<int(n_spots):
                 spot_signal_list.append(num_white)
             else:
                 bg_signal_list.append(num_white)
-    mean_sig = np.mean(spot_signal_list)
-    mean_bg = np.mean(bg_signal_list)
+        sig_per_img.append(round(np.mean(spot_signal_list),3))   
+        bg_per_img.append(round(np.mean(bg_signal_list),3))
+        signal.append(round(((np.mean(spot_signal_list) - np.mean(bg_signal_list))/num_white_mask) * 100,3))
+        
+    print(" The pixel ratio in the spots for those frames is : ", signal)
+        
+    return signal
+
+from sklearn.linear_model import LinearRegression
+
+
+def linear_model(signal):
+    model = LinearRegression()
+    x = np.arange(0, len(signal)).reshape(-1,1)
+    y = np.array(signal)
+    model.fit(x, y)
+    r_sq = model.score(x, y)
+    print(f"slope: {model.coef_}")
+    print(f"intercept: {model.intercept_}")
+    print(f"coefficient of determination: {r_sq}")
+    return(model.coef_, r_sq)
+
+
+
+#, (sig_per_img/num_white_mask)*100, (bg_per_img/num_white_mask)*100
+
+
+# def pixel_ratio(img_list, masks, n_spots):
+#     # 1- Create a blank mask
+#     mask = masks[0]
+#     img_type = img_list[0][0]
+#     blank = np.zeros([np.shape(img_type)[0],np.shape(img_type)[1] ],dtype=np.uint8)
+#     blank.fill(255)
+#     masked_blank = blank.copy()
+#     masked_blank[~mask] = 0
+#     num_white_mask = cv2.countNonZero(masked_blank) 
+
     
-    # 3- Final signal is the one on the spots - the background 
-    #(normalized by the maximum signal possible in a circular mask)
-    signal = ((mean_sig - mean_bg)/num_white_mask) * 100
-    print(" The pixel ratio in the spots for those frames is : ", round(signal, 3))
-    return signal, (mean_sig/num_white_mask)*100, (mean_bg/num_white_mask)*100
+#     # 2- Compute mean signal inside each image masked for each ROI
+
+#     spot_signal_list = []
+#     bg_signal_list = []
+#     for i in range(np.shape(img_list)[0]):
+#         for j, img in enumerate(img_list[i]):
+#             num_white = cv2.countNonZero(img)  
+#             if i<int(n_spots):
+#                 spot_signal_list.append(num_white)
+#             else:
+#                 bg_signal_list.append(num_white)
+#     mean_sig = np.mean(spot_signal_list)
+#     mean_bg = np.mean(bg_signal_list)
+    
+#     # 3- Final signal is the one on the spots - the background 
+#     #(normalized by the maximum signal possible in a circular mask)
+#     signal = ((mean_sig - mean_bg)/num_white_mask) * 100
+#     print(" The pixel ratio in the spots for those frames is : ", round(signal, 3))
+#     return signal, (mean_sig/num_white_mask)*100, (mean_bg/num_white_mask)*100
 
 
 

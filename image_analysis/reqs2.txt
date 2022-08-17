@@ -29,7 +29,7 @@ PyQtWebEngine==5.12.1
 PyWavelets==1.3.0
 pywin32==303
 scikit-image==0.19.3
-scipy==1.8.1
+spy
 sphinxcontrib-applehelp==1.0.2
 sphinxcontrib-devhelp==1.0.2
 sphinxcontrib-jsmath==1.0.1

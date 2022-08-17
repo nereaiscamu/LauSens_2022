@@ -20,6 +20,7 @@ from processing.processing_functions import *
 from analysis.Analyse_results_with_connected_components import Measure
 import cv2
 from Nc_functions import *
+from sklearn.linear_model import LinearRegression
 
 #from analysis.Select_ROI import execute_roi
 #from AcquireAndSave import execute_capture
@@ -70,4 +71,15 @@ open_imgs = opening(smoothed, iterations = 1)
 masks = create_circular_mask(open_imgs, radius, ROIs)
 masked_imgs = apply_mask(open_imgs, masks)
 
-result = pixel_ratio(masked_imgs, masks, n_spots)
+
+
+#%%
+
+result = pixel_ratio(masked_imgs, masks, n_spots, n_ROIs)
+#%%
+
+slope, R2 = linear_model(result)
+
+''' HERE WE SHOULD TRY DIFFERENT MODELS TO FIT THE DATA AND THEN WE CAN ALSO KNOW 
+AN ESTIMATE OF THE CONCENTRATION '''
+
