@@ -69,12 +69,19 @@ def process(path, n_spots, n_bg):
     masks = create_circular_mask(open_imgs, radius, ROIs)
     masked_imgs = apply_mask(open_imgs, masks)
 
-    result = pixel_ratio(masked_imgs, masks, n_spots)
+    result = pixel_ratio(masked_imgs, masks, n_spots, n_ROIs)
+    slope, R2 = linear_model(result)
     print(str(result))
     print("Writing to result.txt")
     f = open("results.txt", "w")
     f.write("Results :")
-    f.write("Signal : " + str(result[0]))
-    f.write("Mean sig : " + str(result[1]))
-    f.write("Mean bg : " + str(result[2]))
+    # f.write("Signal : " + str(result[0]))
+    # f.write("Mean sig : " + str(result[1]))
+    # f.write("Mean bg : " + str(result[2]))
+    f.write("Slope : " + str(slope))
     f.close()
+
+
+path = os.path.dirname(os.path.abspath(__file__))
+
+process(path, 2, 2)

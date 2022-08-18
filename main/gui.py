@@ -1,4 +1,4 @@
-import PySimpleGUI as sg
+Fimport PySimpleGUI as sg
 from PIL import Image, ImageTk
 import bluriness_metric
 import control_flip_camera

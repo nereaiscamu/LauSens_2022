@@ -252,7 +252,7 @@ def polyfit2d_alt1(x, y, z, order=3):
     m, _, _, _ = np.linalg.lstsq(G, z)
     return m
 
-def smooth_background(imgs, rescale_factor=0.2, poly_deg=[1,2]):
+def smooth_background(imgs, rescale_factor=0.2, poly_deg=[2,2]): #before it was 1,2
     '''
     Function from SensUs 2019
     Smooths the background of the image by modeling the background with a polynomial 
