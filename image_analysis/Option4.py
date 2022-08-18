@@ -76,7 +76,7 @@ Link here: https://stackoverflow.com/questions/35854197/how-to-use-opencvs-conne
 
 #%%
 
-img_test = open_imgs[6]
+img_test = open_imgs[0]
 connectivity = 8  # You need to choose 4 or 8 for connectivity type
 num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(img_test , connectivity , cv2.CV_32S)
 nb_pixels = 0
@@ -90,7 +90,13 @@ for c in range(0, num_labels):
         if((area>9) & (area<90)): #TODO: before it was 3, 30
             nb_pixels = nb_pixels + area 
             
-labels_img = Image.fromarray(labels)            
+labels_img = Image.fromarray(labels)    
+        
 labels_img.show()             
-percent_pixels = nb_pixels / stats[0, cv2.CC_STAT_AREA]
+
+percent_pixels = nb_pixels / stats[0, cv2.CC_STAT_AREA]*100
+
 print(percent_pixels)
+
+
+
