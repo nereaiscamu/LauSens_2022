@@ -131,6 +131,12 @@ def initialize_LSPOne(lsp):
     set_force(lsp, "low")
     print("LSPOne initialized")
 
+def halt(lsp):
+    lsp.write(b"/1T\r")
+
+def continue_from_halt(lsp):
+    lsp.write(b"/1R\r")
+
 ##
 ######################TEST/SEQUENCE FUNCTIONS######################
 ##
@@ -140,6 +146,13 @@ def initialize_LSPOne(lsp):
 ##
 ######################MAIN######################
 ##
+
+def go_to_zero(lsp):
+    trash=1
+    final_sequence=peak_speed(100)+wait(200)+change_to_valve_fastest(trash)+wait(200)+go_to_absolute_pump_position(0)+wait(200)
+    halt(lsp)
+    time.sleep(0.1)
+    write_sequence_to_pump(lsp, final_sequence)
 
 def filling_pipes(lsp):
     trash = 1
@@ -215,13 +228,14 @@ def dispense_blocking_and_sample(lsp):
 
     #clean_trash=change_to_valve_fastest(sample)+wait(200)+peak_speed(100)+wait(200)+pickup_position(2000)+wait(200)+change_to_valve_fastest(trash)+wait(200)+go_to_absolute_pump_position(0)+wait(200)
     dispense_blocking=change_to_valve_fastest(blocking)+wait(200)+peak_speed(50)+wait(200)+pickup_position(200)+wait(200)+change_to_valve_fastest(cartridge)+wait(200)+peak_speed(20)+wait(200)+go_to_absolute_pump_position(0)+wait(bb_incubation_time_ms)
-    add_air = change_to_valve_fastest(trash)+wait(200)+peak_speed(300)+wait(200)+pickup_position(400)+wait(200)+change_to_valve_fastest(cartridge)+wait(200)+peak_speed(20)+wait(200)+go_to_absolute_pump_position(0)+wait(200)
-    pickup_sample = change_to_valve_fastest(sample)+wait(200)+peak_speed(10)+wait(200)+pickup_position(100)+wait(200)+change_to_valve_fastest(trash)+wait(200)+go_to_absolute_pump_position(0)+wait(200)+change_to_valve_fastest(sample)+wait(200)+pickup_position(120)+wait(200)
-    dispense_sample = change_to_valve_fastest(cartridge)+peak_speed(10)+wait(200)+dispense_position(120)+wait(200)+change_to_valve_fastest(sample)+peak_speed(500)+wait(200)+pickup_position(500)+wait(200)+change_to_valve_fastest(cartridge)+wait(200)+peak_speed(2)+wait(200)+dispense_position(260)+wait(2000)+repeat_sequence(pickup_position(180)+wait(2000)+dispense_position(180)+wait(2000),200)+peak_speed(20)+wait(200)+go_to_absolute_pump_position(0)+wait(200)
+    add_air = change_to_valve_fastest(trash)+wait(200)+peak_speed(300)+wait(200)+pickup_position(500)+wait(200)+change_to_valve_fastest(cartridge)+wait(200)+peak_speed(20)+wait(200)+go_to_absolute_pump_position(0)+wait(200)
+    pickup_sample = change_to_valve_fastest(sample)+wait(200)+peak_speed(10)+wait(200)+pickup_position(80)+wait(200)+change_to_valve_fastest(trash)+wait(200)+go_to_absolute_pump_position(0)+wait(200)+change_to_valve_fastest(sample)+wait(200)+pickup_position(110)+wait(200)
+    dispense_sample = change_to_valve_fastest(cartridge)+peak_speed(10)+wait(200)+dispense_position(120)+wait(200)+change_to_valve(sample)+peak_speed(200)+wait(200)+pickup_position(420)+wait(200)+change_to_valve_fastest(cartridge)+wait(200)+peak_speed(5)+wait(200)+dispense_position(420)+wait(2000)+repeat_sequence(pickup_position(440)+wait(2000)+dispense_position(420)+wait(2000),100)+peak_speed(20)+wait(200)+go_to_absolute_pump_position(0)+wait(200)
     
     final_sequence=dispense_blocking+add_air+pickup_sample+dispense_sample
 
     write_sequence_to_pump(lsp, final_sequence)
+
 
 # lsp = serial.Serial("COM4", 9600, timeout=1000)
 

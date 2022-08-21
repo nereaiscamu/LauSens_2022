@@ -82,6 +82,6 @@ def process(path, n_spots, n_bg):
     f.close()
 
 
-path = os.path.dirname(os.path.abspath(__file__))
+# path = os.path.dirname(os.path.abspath(__file__))
 
-process(path, 2, 2)
+# process(path, 2, 2)

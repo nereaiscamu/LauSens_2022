@@ -21,7 +21,6 @@ try:
     microflu.initialize_LSPOne(lsp)
 except:
     print("Pump not connected")
-# time.sleep(1)  # Needed so that computer detect arduino # TODO remove
 # print(arduino) # Arduino info.
 
 # Move camera
@@ -38,7 +37,7 @@ def move_along_axis(pos_camera, dir, step_focus):
     # Example :
     # 04 0100 zfw
     # NEED TO ADD 0 IN FRONT TO HAVE GOOD FORMAT
-    com = "04 " + str(step_focus).zfill(4)
+    com = "04 " + str(step_focus).zfill(4) # TODO reduce ?
     if dir == "-LEFT-":
         com += " xfw"
         pos_camera += np.array([step_focus, 0, 0])
@@ -79,7 +78,10 @@ if num_cameras != 1:  # No camera or more than one camera
     raise Exception('Single camera not detected')
 cam = cam_list[0]
 
+# Size of zoomed image displayed
 size_zoom = (200, 200)
+
+size_zoom2 = (547, 820)
 
 # Init camera
 control_flip_camera.init_camera(cam)
@@ -92,14 +94,19 @@ explanations = [
     [sg.Text("Welcome on our user interface ! \nThis GUI aims at controlling our system made of microfluidics pump, an autofocusing microscope and an image processing to detect IL-6 spots.")]
 ]
 print_metric = [
-    [sg.TabGroup([[sg.Tab("Microfluidics", [[sg.Button("Sample measurement", key="sample_measurement",  pad=(10, 10, 10, 0)), sg.Button("Filling", key="filling_microflu")], [sg.Button("FLUSH", key="full_flush_microflu",  pad=(10, 0, 0, 0)), sg.Button("flush", key="flush_microflu")]]), 
+    [sg.TabGroup([[sg.Tab("Microfluidics", [[sg.Button("Sample measurement", key="sample_measurement",  pad=(10, 10, 10, 0)), sg.Button("Filling", key="filling_microflu")], [sg.Button("FLUSH", key="full_flush_microflu",  pad=(10, 0, 0, 0)), sg.Button("flush", key="flush_microflu",  pad=(10, 0, 0, 0)), sg.Button("HALT", key="halt_microflu", pad=(10, 0, 0, 0)), sg.Button("Cont", key="cont_microflu"), sg.Button("zero", key="zero_micro")]]), 
         sg.Tab("Autofocus", [[sg.Text(key='-TEXT_METRIC-')],
-        [sg.Button("↑", pad=(25, 0, 0, 0), key='-UP-'),
-        sg.Button("↑", pad=(30, 0, 0, 0), key='-UP2-')],
-        [sg.Button("←", key='-LEFT-'), sg.Button("→", key='-RIGHT-')],
-        [sg.Button("↓", key='-DOWN-', pad=(25, 0, 0, 0)),
-        sg.Button("↓", pad=(30, 0, 0, 0), key='-DOWN2-')],
-        [sg.T("\n", size=(1 , 1))],
+
+        [sg.Frame("x / y plan", pad = (10, 0), layout = [[sg.Button("↑", key='-UP-', pad=(25, 5, 0, 0))], [sg.Button("←", key='-LEFT-'), sg.Button("→", key='-RIGHT-')], [sg.Button("↓", key='-DOWN-', pad=(25, 5, 0, 0))], ]), 
+        sg.Frame("z plan", pad = (10, 0), layout = [[sg.Button("↑", key='-UP2-', pad=(25, 5, 0, 0))], [], [sg.Button("↓", key='-DOWN2-', pad=(25, 5, 0, 0))], ])],
+
+        # [sg.Button("↑", pad=(25, 0, 0, 0), key='-UP-'),
+        # sg.Button("↑", pad=(30, 0, 0, 0), key='-UP2-')],
+        # [sg.Button("←", key='-LEFT-'), sg.Button("→", key='-RIGHT-')],
+        # [sg.Button("↓", key='-DOWN-', pad=(25, 0, 0, 0)),
+        # sg.Button("↓", pad=(30, 0, 0, 0), key='-DOWN2-')],
+
+        [sg.T("\n", size=(20 , 1), key='-wait-msg-')],
         [sg.Button("Autofocus", key="Autofocus", pad=(10, 10) ), sg.Button("Set to 0", key="set_to_zero", pad=(10, 10)), sg.Button("Move to 0", key="move_to_zero", pad=(10, 10) )], 
         
         ]),
@@ -119,7 +126,7 @@ print_metric = [
 ]
 img_to_print = [
     # resized_width, resized_height
-    [sg.Image(size=(547, 820), key='-IMAGE2-')]
+    [sg.Image(size=(1000, 1000), key='-IMAGE2-')]
     # [sg.Graph((820, 547), (-50, -50), (50, 50), key='-GRAPH-', drag_submits=False)]
 ]
 
@@ -137,22 +144,28 @@ layout = [
         # sg.Graph((100, 100), (-50, -50), (50, 50), key='-GRAPH-', drag_submits=False),
         sg.VSeperator(),
         sg.Column(print_metric, element_justification='left',
-                  expand_x=True, size=(100, 547)),
+                  expand_x=True, size=(100, 560)),
     ]
 ]
 
 # Layout to display plots
 layout2 = [[sg.Canvas(key='figCanvas')], ]
 
+layout3 = [[sg.Image(size=(547, 820), key='-IMAGE3-')], ]
+
 sg.theme('SystemDefault')
 
 AppFont = 'Any 10'
 window = sg.Window("LauSens - Autofocus Interface",
                    layout, resizable=True, no_titlebar=False, auto_size_buttons=True, font=AppFont).Finalize()
+window.maximize()
 
 window2 = sg.Window("LauSens - Autofocus Interface",
                     layout2, resizable=True, no_titlebar=False, auto_size_buttons=True, font=AppFont).Finalize()
 window2.set_alpha(0)
+
+window3 = sg.Window("LauSens - Autofocus Interface",
+                    layout3, resizable=True, no_titlebar=False, auto_size_buttons=True, keep_on_top=True, font=AppFont, enable_close_attempted_event = True).Finalize()
 
 image = ImageTk.PhotoImage(image=im)
 window['-LOGO-'].update(data=image)
@@ -160,7 +173,7 @@ window['-TEXT_METRIC-'].update(
     "Bluriness metric for this image :\n" +
     "Laplacian variance measurement : NaN arb. \n" +
     "JPEG size measurement : NaN kB  \n\n" +
-    "Image position (1 unit ≈ 0.65 μm) :\n(0, 0, 0)\n")
+    "Image position (1 unit ≈ 0.65 μm) :\n(0, 0, 0)")
 
 # Convert np array image to Tkinter Image
 def _photo_image(image: np.ndarray):
@@ -219,36 +232,6 @@ def get_bluriness_metric():
     # return bluriness_metric.blurre_JPEG_size_b(path + "/tmp.png") / 8 / 1000
     return bluriness_metric.blurre_lapace_var(path + "/tmp.png")
 
-# Compute and return bluriness of current image (sent by camera)
-# Same as get_bluriness_metric but doesn't update image (i.e not displayed on interface)
-# TODO Remove get_metric() to have only get_bluriness_metric()
-
-
-def get_metric():
-    image_result = cam.GetNextImage(1000)
-    if image_result.IsIncomplete():
-        raise Exception('Image incomplete with image status %d ...' %
-                        image_result.GetImageStatus())
-    else:
-        image_data = image_result.GetNDArray()
-        image_result.Release()
-
-        # reduce image
-        reducing_factor = 0.15
-        resized_width, resized_height = [
-            int(i * reducing_factor) for i in image_data.shape]
-        image_data = cv2.resize(image_data, (resized_height, resized_width))
-
-        img = Image.fromarray(image_data)
-        # TODO reduce compress_level -> faster but less precise
-        img.save(path + "/tmp.png", compress_level=3)
-
-    window.refresh()
-
-    # TODO Choose metric to use
-    # return bluriness_metric.blurre_JPEG_size_b(path + "/tmp.png") / 8 / 1000
-    return bluriness_metric.blurre_lapace_var(path + "/tmp.png")
-
 # Estimate time taken to send command and to move motors given a step value
 # Return value will be the time to wait after we send a command to move motor of this step
 
@@ -259,14 +242,9 @@ def estimate_step_time(step):
     # step 100 takes around 3 sec => sleep of 4
     # step 20 takes around 2 sec => sleep of 3
     # TODO Optimize to have finer estimation
-    time_for_step = 3
-    if step > 50:
-        time_for_step = 4
-    if step > 110:
-        time_for_step = 5
-    if step > 150:
-        time_for_step = 6
-    return time_for_step
+    time_for_step = 2
+    time = int(time_for_step + step*1/70)
+    return time
 
 # Fast autofocus but can fall into a local maxima
 # Principle :
@@ -287,17 +265,17 @@ def autofocus_fast(pos_camera):
 
         move_along_axis(pos_camera, "-UP2-", step)
         time.sleep(time_for_step)
-        above = get_metric()
+        above = get_bluriness_metric()
         print("above : ", above)
 
         move_along_axis(pos_camera, "-DOWN2-", step)
         time.sleep(time_for_step)
-        opt_val = get_metric()
+        opt_val = get_bluriness_metric()
         print("current (opti) : ", opt_val)
 
         move_along_axis(pos_camera, "-DOWN2-", step)
         time.sleep(time_for_step)
-        below = get_metric()
+        below = get_bluriness_metric()
         print("below : ", below)
 
         # Better to stay below (below has higher sharpness than current)
@@ -531,6 +509,32 @@ live_acqu = False
 acqu_step = 0
 acqu_time = 0
 
+# Motor moving
+warning_msg = False
+warn_time = 0
+
+def move_to_zero():
+    index_step = 0
+    step_list = [500, 200, 50, 10, 5]
+    while(pos_camera[0] != 0 or pos_camera[1] != 0):
+        step_focus = step_list[index_step]
+        print(step_focus)
+        time_for_step = estimate_step_time(step_focus)
+        while(pos_camera[0] < 0 and step_focus <= abs(pos_camera[0])):
+            move_along_axis(pos_camera, "-LEFT-", step_focus)
+            time.sleep(time_for_step)
+        while(pos_camera[0] > 0 and step_focus <= abs(pos_camera[0])):
+            move_along_axis(pos_camera, "-RIGHT-", step_focus)
+            time.sleep(time_for_step)
+        while(pos_camera[1] < 0 and step_focus <= abs(pos_camera[1])):
+            move_along_axis(pos_camera, "-UP-", step_focus)
+            time.sleep(time_for_step)
+        while(pos_camera[1] > 0 and step_focus <= abs(pos_camera[1])):
+            move_along_axis(pos_camera, "-DOWN-", step_focus)
+            time.sleep(time_for_step)
+        if ((step_focus > pos_camera[0] or step_focus > pos_camera[1]) and index_step <= len(step_list) - 2):
+            index_step += 1
+
 # Update/display image and compute/display both bluriness metrics (JPEG size and Laplacian variance) on interace
 def update():
     image_result = cam.GetNextImage(1000)
@@ -571,13 +575,22 @@ def update():
         image_data_zoom = image_data[int(image_center[0] - 100):int(image_center[0] + 100), int(image_center[1] - 100):int(image_center[1] + 100)]
         image_data_zoom = cv2.resize(
             image_data_zoom, size_zoom)
+        image_data_zoom_2 = image_data[int(image_center[0] - 1000):int(image_center[0] + 1000), int(image_center[1] - 1000):int(image_center[1] + 1000)]
+        image_data_zoom_2 = cv2.resize(image_data_zoom_2, size_zoom2)
 
-        # reduce image
+        # Draw white rectangle (zoom loc)
         cv2.line(image_data, (int(image_center[1] - 100), int(image_center[0] - 100)), (int(image_center[1] -100), int(image_center[0] + 100)), color = (255, 255, 255), thickness = 10) 
         cv2.line(image_data, (int(image_center[1] - 100), int(image_center[0] - 100)), (int(image_center[1] +100), int(image_center[0] - 100)), color = (255, 255, 255), thickness = 10) 
         cv2.line(image_data, (int(image_center[1] + 100), int(image_center[0] + 100)), (int(image_center[1] -100), int(image_center[0] + 100)), color = (255, 255, 255), thickness = 10) 
-        cv2.line(image_data, (int(image_center[1] + 100), int(image_center[0] + 100)), (int(image_center[1] +100), int(image_center[0] - 100)), color = (255, 255, 255), thickness = 10) 
-        reducing_factor = 0.15
+        cv2.line(image_data, (int(image_center[1] + 100), int(image_center[0] + 100)), (int(image_center[1] +100), int(image_center[0] - 100)), color = (255, 255, 255), thickness = 10)
+
+        # Draw white rectangle (zoom loc)
+        cv2.line(image_data, (int(image_center[1] - 1000), int(image_center[0] - 1000)), (int(image_center[1] -1000), int(image_center[0] + 1000)), color = (0, 0, 0), thickness = 10) 
+        cv2.line(image_data, (int(image_center[1] - 1000), int(image_center[0] - 1000)), (int(image_center[1] +1000), int(image_center[0] - 1000)), color = (0, 0, 0), thickness = 10) 
+        cv2.line(image_data, (int(image_center[1] + 1000), int(image_center[0] + 1000)), (int(image_center[1] -1000), int(image_center[0] + 1000)), color = (0, 0, 0), thickness = 10) 
+        cv2.line(image_data, (int(image_center[1] + 1000), int(image_center[0] + 1000)), (int(image_center[1] +1000), int(image_center[0] - 1000)), color = (0, 0, 0), thickness = 10) 
+        # reduce image
+        reducing_factor = 0.16
         resized_width, resized_height = [
             int(i * reducing_factor) for i in image_data.shape]
         image_data = cv2.resize(
@@ -598,19 +611,21 @@ def update():
             # "Laplacian variance measurement : " + str(bluriness_metric.blurre_lapace_var(path + "/tmp.png")) + " arb. \n" +
             # bits to kiloBytes
             # "JPEG size measurement : " + str(bluriness_metric.blurre_JPEG_size_b(path + "/tmp.png") / 8 / 1000) + " kB \n\n" +
-            "Image position (1 unit ≈ 0.65 μm) :\n" + str(pos_camera) + " ≈ " + str(pos_camera * 0.65) + "\n")
+            "Image position (1 unit ≈ 0.65 μm) :\n" + str(pos_camera) + " ≈ " + str(pos_camera * 0.65))
 
         # To display img after
         img = _photo_image(image_data)
         img_zoom = _photo_image(image_data_zoom)
+        img_zoom_2 = _photo_image(image_data_zoom_2)
 
     window['-IMAGE2-'].update(data=img)
     window['-IMAGE_ZOOM-'].update(data=img_zoom)
+    window3['-IMAGE3-'].update(data=img_zoom_2)
 
 # Run the Event Loop
 while True:
     update()
-    event, values = window.read(timeout=250) # TODO Timeout opt
+    event, values = window.read(timeout=60) # TODO Timeout opt (lower to have  but makes the program slower)
 
     if event == "Exit" or event == sg.WIN_CLOSED:
         break
@@ -626,25 +641,7 @@ while True:
 
     elif event == "move_to_zero":  # Set current position to be the initial position
         print("perform move to 0")
-        index_step = 0
-        step_list = [500, 200, 50, 10, 5]
-        while(pos_camera[0] != 0 or pos_camera[1] != 0):
-            step_focus = step_list[index_step]
-            time_for_step = estimate_step_time(step_focus)
-            while(pos_camera[0] < 0 and step_focus <= pos_camera[0]):
-                move_along_axis(pos_camera, "-LEFT-", step_focus)
-                time.sleep(time_for_step)
-            while(pos_camera[0] > 0 and step_focus <= pos_camera[0]):
-                move_along_axis(pos_camera, "-RIGHT-", step_focus)
-                time.sleep(time_for_step)
-            while(pos_camera[1] < 0 and step_focus <= pos_camera[1]):
-                move_along_axis(pos_camera, "-UP-", step_focus)
-                time.sleep(time_for_step)
-            while(pos_camera[1] > 0 and step_focus <= pos_camera[1]):
-                move_along_axis(pos_camera, "-DOWN-", step_focus)
-                time.sleep(time_for_step)
-            if ((step_focus > pos_camera[0] or step_focus > pos_camera[1]) and index_step <= len(step_list) - 1):
-                index_step += 1
+        move_to_zero()
 
     elif event == "acquisition":  # Image acquisition
         print("perform image acquisition")
@@ -672,6 +669,18 @@ while True:
         print("perform sample measurement") # TODO verify
         microflu.dispense_blocking_and_sample(lsp)
 
+    elif event == "halt_microflu":  # Microfluidics flush 
+        print("microfluidics halted")
+        microflu.halt(lsp)
+
+    elif event == "cont_microflu":
+        print("continuing from halting point")
+        microflu.continue_from_halt(lsp)
+
+    elif event == "zero_micro":
+        print("continuing zero")
+        microflu.go_to_zero(lsp)
+
     elif event == "-EXP_TIME-":  # Exposure time
         control_flip_camera.configure_exposure(cam, window['-EXP_TIME-'].get())
 
@@ -681,9 +690,23 @@ while True:
     elif event in {"-LEFT-", "-RIGHT-", "-UP-", "-DOWN-", "-UP2-", "-DOWN2-"}:  # Arrows to move camera
         step_focus = window['-STEP_FOCUS-'].get()
         move_along_axis(pos_camera, event, step_focus)
-        sg.popup("Please wait motors !", title="Info", auto_close = True, auto_close_duration= estimate_step_time(step_focus))
-
+        # sg.popup("Please wait motors !", title="Info", auto_close = True, auto_close_duration= estimate_step_time(step_focus))
+        window['-wait-msg-'].update("Please wait motors !")
+        warning_msg = True
+        warn_time = time.time()
     
+    if warning_msg == True and time.time() - warn_time >= estimate_step_time(step_focus):
+        window['-wait-msg-'].update("\n")
+        warning_msg = False
+        warn_time = 0
+
+# Pump go to zero
+try:
+    microflu.go_to_zero(lsp)
+except:
+    print("Pump not connected")
+
+move_to_zero()
 
 cam.EndAcquisition()
 cam.DeInit()
@@ -694,3 +717,4 @@ system.ReleaseInstance()
 
 window.close()
 window2.close()
+window3.close()
