@@ -12,24 +12,24 @@ import cv2
 import serial
 import time
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from io import BytesIO
+import base64
 
 # Arduino init
 arduino = serial.Serial(port='COM3', baudrate=9600, timeout=1000)
+# print(arduino) # Arduino info.
+
 # Pump init
 try:
     lsp = serial.Serial("COM4", 9600, timeout=1000)
     microflu.initialize_LSPOne(lsp)
 except:
     print("Pump not connected")
-# print(arduino) # Arduino info.
 
 # Move camera
-
-
 def move(com):
     arduino.write(com.encode("ascii"))
     time.sleep(0.05)
-
 
 def move_along_axis(pos_camera, dir, step_focus):
     # format :
@@ -81,7 +81,14 @@ cam = cam_list[0]
 # Size of zoomed image displayed
 size_zoom = (200, 200)
 
-size_zoom2 = (547, 820)
+# Size of image displayed
+camera_img_size = (3648, 5472)
+reducing_factor = 0.16
+zoom_in = False
+zoom_pos_0 = (0, 0)
+zoom_pos_1 = (camera_img_size[1], camera_img_size[0])
+tmp_zoom_pos_1 = (camera_img_size[1], camera_img_size[0])
+time_zoom = time.time()
 
 # Init camera
 control_flip_camera.init_camera(cam)
@@ -100,34 +107,28 @@ print_metric = [
         [sg.Frame("x / y plan", pad = (10, 0), layout = [[sg.Button("↑", key='-UP-', pad=(25, 5, 0, 0))], [sg.Button("←", key='-LEFT-'), sg.Button("→", key='-RIGHT-')], [sg.Button("↓", key='-DOWN-', pad=(25, 5, 0, 0))], ]), 
         sg.Frame("z plan", pad = (10, 0), layout = [[sg.Button("↑", key='-UP2-', pad=(25, 5, 0, 0))], [], [sg.Button("↓", key='-DOWN2-', pad=(25, 5, 0, 0))], ])],
 
-        # [sg.Button("↑", pad=(25, 0, 0, 0), key='-UP-'),
-        # sg.Button("↑", pad=(30, 0, 0, 0), key='-UP2-')],
-        # [sg.Button("←", key='-LEFT-'), sg.Button("→", key='-RIGHT-')],
-        # [sg.Button("↓", key='-DOWN-', pad=(25, 0, 0, 0)),
-        # sg.Button("↓", pad=(30, 0, 0, 0), key='-DOWN2-')],
-
         [sg.T("\n", size=(20 , 1), key='-wait-msg-')],
-        [sg.Button("Autofocus", key="Autofocus", pad=(10, 10) ), sg.Button("Set to 0", key="set_to_zero", pad=(10, 10)), sg.Button("Move to 0", key="move_to_zero", pad=(10, 10) )], 
+        [sg.Button("Autofocus", key="Autofocus", pad=(10, 10) ), sg.Button("Set to 0", key="set_to_zero", pad=(10, 10)), sg.Button("Move to 0", key="move_to_zero", pad=(10, 10)), sg.Button("Reset", key="-reset_zoom-", pad=(10, 10) )], 
         
         ]),
-        sg.Tab("Image processing", [[sg.Text("Numer of spot :"), sg.Spin([i for i in range(6)], initial_value=3, pad = (0, 10, 0, 0),key='-nbr_spot-', font=('Helvetica 12'), change_submits=True)], [sg.Text("Background number :"), sg.Spin([i for i in range(6)], initial_value=3, key='-nbr_bg-', font=('Helvetica 12'), change_submits=True)], [sg.Button("Live acquisition", key="acquisition",  pad=(10, 10)), sg.Button("Process", key="imgproc",  pad=(10, 10))]]),
+        sg.Tab("Image processing", [[sg.Text("Numer of spot :"), sg.Spin([i for i in range(6)], initial_value=3, pad = (0, 10, 0, 0),key='-nbr_spot-', font=('Helvetica 12'), enable_events=True)], [sg.Text("Background number :"), sg.Spin([i for i in range(6)], initial_value=3, key='-nbr_bg-', font=('Helvetica 12'), enable_events=True)], [sg.Button("Live acquisition", key="acquisition",  pad=(10, 10)), sg.Button("Process", key="imgproc",  pad=(10, 10))]]),
         ]], expand_x=True)],
 
     [sg.Text(' '*15 + '-'*15 + "   Camera settings   " + '-'*15)],
     [sg.Text("Step focus :"), sg.Spin([5*i for i in range(102)],
                                       initial_value=50, key='-STEP_FOCUS-', font=('Helvetica 12'), size=(3, 2)),
      sg.Text("Exposure time :"), sg.Spin([100*i for i in range(100, 200)],
-                                         initial_value=10332, key='-EXP_TIME-', font=('Helvetica 12'), change_submits=True)
+                                         initial_value=10332, key='-EXP_TIME-', font=('Helvetica 12'), enable_events=True)
      ],
 
     [sg.Text("         Gain :"), sg.Spin([i/10 for i in range(100, 300)],
-                                         initial_value=23.3, key='-GAIN-', font=('Helvetica 12'), change_submits=True)],
+                                         initial_value=23.3, key='-GAIN-', font=('Helvetica 12'), enable_events=True)],
     [sg.Image(size=size_zoom, key='-IMAGE_ZOOM-')],
 ]
 img_to_print = [
     # resized_width, resized_height
-    [sg.Image(size=(1000, 1000), key='-IMAGE2-')]
-    # [sg.Graph((820, 547), (-50, -50), (50, 50), key='-GRAPH-', drag_submits=False)]
+    # [sg.Image(size=(1000, 1000), key='-IMAGE2-')]
+    [sg.Graph(  (int(camera_img_size[1]*reducing_factor), int(camera_img_size[0]*reducing_factor)), (0, camera_img_size[0]), (camera_img_size[1], 0), key='-GRAPH-', drag_submits=True, enable_events=True)]
 ]
 
 # ----- Full layout -----
@@ -141,7 +142,6 @@ layout = [
     ],
     [
         sg.Column(img_to_print),
-        # sg.Graph((100, 100), (-50, -50), (50, 50), key='-GRAPH-', drag_submits=False),
         sg.VSeperator(),
         sg.Column(print_metric, element_justification='left',
                   expand_x=True, size=(100, 560)),
@@ -151,8 +151,6 @@ layout = [
 # Layout to display plots
 layout2 = [[sg.Canvas(key='figCanvas')], ]
 
-layout3 = [[sg.Image(size=(547, 820), key='-IMAGE3-')], ]
-
 sg.theme('SystemDefault')
 
 AppFont = 'Any 10'
@@ -160,12 +158,9 @@ window = sg.Window("LauSens - Autofocus Interface",
                    layout, resizable=True, no_titlebar=False, auto_size_buttons=True, font=AppFont).Finalize()
 window.maximize()
 
-window2 = sg.Window("LauSens - Autofocus Interface",
-                    layout2, resizable=True, no_titlebar=False, auto_size_buttons=True, font=AppFont).Finalize()
-window2.set_alpha(0)
-
-window3 = sg.Window("LauSens - Autofocus Interface",
-                    layout3, resizable=True, no_titlebar=False, auto_size_buttons=True, keep_on_top=True, font=AppFont, enable_close_attempted_event = True).Finalize()
+# window2 = sg.Window("LauSens - Autofocus Interface",
+#                    layout2, resizable=True, no_titlebar=False, auto_size_buttons=True, font=AppFont).Finalize()
+# window2.set_alpha(0)
 
 image = ImageTk.PhotoImage(image=im)
 window['-LOGO-'].update(data=image)
@@ -183,8 +178,6 @@ def _photo_image(image: np.ndarray):
     return ImageTk.PhotoImage(width=width, height=height, data=data, format='PPM')
 
 # Compute and return bluriness of current image (sent by camera)
-
-
 def get_bluriness_metric():
     image_result = cam.GetNextImage(1000)
 
@@ -210,7 +203,6 @@ def get_bluriness_metric():
         # reduce image
         # - to display on interface
         # - bluriness metric computed on this image will be faster
-        reducing_factor = 0.15
         resized_width, resized_height = [
             int(i * reducing_factor) for i in image_data.shape]
         image_data = cv2.resize(
@@ -222,9 +214,13 @@ def get_bluriness_metric():
 
         # --- ONLY DIFFERENCE WITH get_metric(): ---
         # Update image on interface (slow down)
-        img = _photo_image(image_data)
-        window['-IMAGE2-'].update(data=img)
-        # window['-GRAPH-'].DrawImage(filename= "tmp.PNG")
+        # img = _photo_image(image_data)
+        # window['-IMAGE2-'].update(data=img)
+
+        buffered = BytesIO()
+        Image.fromarray(image_data).save(buffered, format="PNG")
+        img_str = base64.b64encode(buffered.getvalue())
+        window['-GRAPH-'].DrawImage(data = img_str, location = (camera_img_size[1], camera_img_size[0]))
 
         window.refresh()
 
@@ -249,8 +245,6 @@ def estimate_step_time(step):
 # Fast autofocus but can fall into a local maxima
 # Principle :
 # Measure bluriness above, below and current position and go to in the direction that increase sharpness
-
-
 def autofocus_fast(pos_camera):
     optimum = False
     opt_val = 0
@@ -301,8 +295,6 @@ def autofocus_fast(pos_camera):
             optimum = True
 
 # Improved autofocus
-
-
 def autofocus_simple(pos_camera):
     # Must move camera below focal point (to find maxima by left)
     step = 20
@@ -370,8 +362,6 @@ def autofocus_simple(pos_camera):
             focus = True
 
 # Used to display plot on interface
-
-
 class Canvas(FigureCanvasTkAgg):
     """
     Create a canvas for matplotlib pyplot under tkinter/PySimpleGUI canvas
@@ -430,8 +420,8 @@ def smart_z_stack(pos_camera):
     fig.tight_layout()
     canvas = Canvas(fig, window2['figCanvas'].Widget)
     canvas.draw()
-    window2.set_alpha(1)
-    window2.refresh()
+    # window2.set_alpha(1)
+    # window2.refresh()
 
     backlash = 0
     tmp = round(np.abs(np.sum(second_shorter_curve_by_z -
@@ -475,7 +465,7 @@ def smart_z_stack(pos_camera):
         fig.tight_layout()
         canvas = Canvas(fig, window2['figCanvas'].Widget)
         canvas.draw()
-        window2.refresh()
+        # window2.refresh()
 
         estimate_focal_point = np.argmax(stack_9_img[0])
         print("Estimated focal point : ", estimate_focal_point)
@@ -547,6 +537,37 @@ def update():
         image_data = image_result.GetNDArray()
         image_result.Release()
 
+        global zoom_pos_0
+        global zoom_pos_1
+
+        if zoom_in == False:
+            if abs(zoom_pos_1[0] - zoom_pos_0[0]) < 5 or abs(zoom_pos_1[1] - zoom_pos_0[1]) < 5:
+                zoom_pos_0 = (0, 0)
+                zoom_pos_1 = (camera_img_size[1], camera_img_size[0])
+            elif zoom_pos_1[0] < zoom_pos_0[0] and zoom_pos_1[1] < zoom_pos_0[1]:
+                print("0")
+                tmp = zoom_pos_0
+                zoom_pos_0 = zoom_pos_1
+                zoom_pos_1 = tmp
+            elif zoom_pos_1[0] > zoom_pos_0[0] and zoom_pos_1[1] < zoom_pos_0[1]:
+                print("1")
+                tmp = zoom_pos_0
+                zoom_pos_0 = (zoom_pos_0[0], zoom_pos_1[1])
+                zoom_pos_1 = (zoom_pos_1[0], tmp[1])
+            elif zoom_pos_1[0] < zoom_pos_0[0] and zoom_pos_1[1] > zoom_pos_0[1]:
+                print("2")
+                tmp = zoom_pos_0
+                zoom_pos_0 = (zoom_pos_1[0], zoom_pos_0[1])
+                zoom_pos_1 = (tmp[0], zoom_pos_1[1])
+
+            image_data = image_data[zoom_pos_0[1]:zoom_pos_1[1], zoom_pos_0[0]:zoom_pos_1[0]]
+            image_data = cv2.resize(image_data, (camera_img_size[1],camera_img_size[0] ) )
+        else: 
+            cv2.line(image_data, zoom_pos_0, (zoom_pos_0[0], tmp_zoom_pos_1[1]), color = (255, 255, 255), thickness = 10)
+            cv2.line(image_data, zoom_pos_0, (tmp_zoom_pos_1[0], zoom_pos_0[1]), color = (255, 255, 255), thickness = 10)
+            cv2.line(image_data, tmp_zoom_pos_1, (zoom_pos_0[0], tmp_zoom_pos_1[1]), color = (255, 255, 255), thickness = 10)
+            cv2.line(image_data, tmp_zoom_pos_1, (tmp_zoom_pos_1[0], zoom_pos_0[1]), color = (255, 255, 255), thickness = 10)
+
         # Save image
         # SLOW
         """
@@ -575,8 +596,6 @@ def update():
         image_data_zoom = image_data[int(image_center[0] - 100):int(image_center[0] + 100), int(image_center[1] - 100):int(image_center[1] + 100)]
         image_data_zoom = cv2.resize(
             image_data_zoom, size_zoom)
-        image_data_zoom_2 = image_data[int(image_center[0] - 1000):int(image_center[0] + 1000), int(image_center[1] - 1000):int(image_center[1] + 1000)]
-        image_data_zoom_2 = cv2.resize(image_data_zoom_2, size_zoom2)
 
         # Draw white rectangle (zoom loc)
         cv2.line(image_data, (int(image_center[1] - 100), int(image_center[0] - 100)), (int(image_center[1] -100), int(image_center[0] + 100)), color = (255, 255, 255), thickness = 10) 
@@ -584,13 +603,7 @@ def update():
         cv2.line(image_data, (int(image_center[1] + 100), int(image_center[0] + 100)), (int(image_center[1] -100), int(image_center[0] + 100)), color = (255, 255, 255), thickness = 10) 
         cv2.line(image_data, (int(image_center[1] + 100), int(image_center[0] + 100)), (int(image_center[1] +100), int(image_center[0] - 100)), color = (255, 255, 255), thickness = 10)
 
-        # Draw white rectangle (zoom loc)
-        cv2.line(image_data, (int(image_center[1] - 1000), int(image_center[0] - 1000)), (int(image_center[1] -1000), int(image_center[0] + 1000)), color = (0, 0, 0), thickness = 10) 
-        cv2.line(image_data, (int(image_center[1] - 1000), int(image_center[0] - 1000)), (int(image_center[1] +1000), int(image_center[0] - 1000)), color = (0, 0, 0), thickness = 10) 
-        cv2.line(image_data, (int(image_center[1] + 1000), int(image_center[0] + 1000)), (int(image_center[1] -1000), int(image_center[0] + 1000)), color = (0, 0, 0), thickness = 10) 
-        cv2.line(image_data, (int(image_center[1] + 1000), int(image_center[0] + 1000)), (int(image_center[1] +1000), int(image_center[0] - 1000)), color = (0, 0, 0), thickness = 10) 
         # reduce image
-        reducing_factor = 0.16
         resized_width, resized_height = [
             int(i * reducing_factor) for i in image_data.shape]
         image_data = cv2.resize(
@@ -614,18 +627,20 @@ def update():
             "Image position (1 unit ≈ 0.65 μm) :\n" + str(pos_camera) + " ≈ " + str(pos_camera * 0.65))
 
         # To display img after
-        img = _photo_image(image_data)
+        # img = _photo_image(image_data)
         img_zoom = _photo_image(image_data_zoom)
-        img_zoom_2 = _photo_image(image_data_zoom_2)
 
-    window['-IMAGE2-'].update(data=img)
+    buffered = BytesIO()
+    Image.fromarray(image_data).save(buffered, format="PNG")
+    img_str = base64.b64encode(buffered.getvalue())
+    window['-GRAPH-'].DrawImage(data = img_str, location = (0, 0))
+    # window['-IMAGE2-'].update(data=img)
     window['-IMAGE_ZOOM-'].update(data=img_zoom)
-    window3['-IMAGE3-'].update(data=img_zoom_2)
 
 # Run the Event Loop
 while True:
     update()
-    event, values = window.read(timeout=60) # TODO Timeout opt (lower to have  but makes the program slower)
+    event, values = window.read(timeout=50) # TODO Timeout opt (lower to have  but makes the program slower)
 
     if event == "Exit" or event == sg.WIN_CLOSED:
         break
@@ -642,6 +657,11 @@ while True:
     elif event == "move_to_zero":  # Set current position to be the initial position
         print("perform move to 0")
         move_to_zero()
+
+    elif event == "-reset_zoom-":
+        print("reset zoom")
+        zoom_pos_0 = (0, 0)
+        zoom_pos_1 = (camera_img_size[1], camera_img_size[0])
 
     elif event == "acquisition":  # Image acquisition
         print("perform image acquisition")
@@ -694,7 +714,17 @@ while True:
         window['-wait-msg-'].update("Please wait motors !")
         warning_msg = True
         warn_time = time.time()
-    
+    elif values['-GRAPH-'] != (None, None) and  event != '__TIMEOUT__':
+        if zoom_in == False and event == '-GRAPH-':
+            zoom_pos_0 = values['-GRAPH-']
+            zoom_in = True
+        if zoom_in == True and event == '-GRAPH-':
+            tmp_zoom_pos_1 = values['-GRAPH-']
+        elif event == '-GRAPH-+UP' and time.time() - time_zoom > 1: 
+            zoom_pos_1 = values['-GRAPH-']
+            zoom_in = False
+            time_zoom = time.time()
+
     if warning_msg == True and time.time() - warn_time >= estimate_step_time(step_focus):
         window['-wait-msg-'].update("\n")
         warning_msg = False
@@ -716,5 +746,4 @@ cam_list.Clear()
 system.ReleaseInstance()
 
 window.close()
-window2.close()
-window3.close()
+# window2.close()
