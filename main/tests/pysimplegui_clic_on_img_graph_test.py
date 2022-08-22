@@ -1,10 +1,9 @@
 import PySimpleGUI as sg
-import random
-import string
 from PIL import Image, ImageTk
 import time
 import base64
 from io import BytesIO
+import os
 
 
 
@@ -28,9 +27,8 @@ window = sg.Window('Window Title', layout, finalize=True)
 
 g = window['-GRAPH-']
 
-img=Image.open("images/Frame_225_sharp.png")
-print(img)
-
+path = os.path.dirname(os.path.abspath(__file__))
+img=Image.open(path + "\\images\\Frame_225_sharp.png")
 
 while True:             # Event Loop
     event, values = window.read()
