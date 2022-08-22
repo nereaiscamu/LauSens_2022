@@ -14,6 +14,7 @@ import time
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from io import BytesIO
 import base64
+import sys
 
 # Arduino init
 arduino = serial.Serial(port='COM3', baudrate=9600, timeout=1000)
@@ -100,18 +101,21 @@ sens_us_logo = [
 explanations = [
     [sg.Text("Welcome on our user interface ! \nThis GUI aims at controlling our system made of microfluidics pump, an autofocusing microscope and an image processing to detect IL-6 spots.")]
 ]
-print_metric = [
-    [sg.TabGroup([[sg.Tab("Microfluidics", [[sg.Button("Sample measurement", key="sample_measurement",  pad=(10, 10, 10, 0)), sg.Button("Filling", key="filling_microflu")], [sg.Button("FLUSH", key="full_flush_microflu",  pad=(10, 0, 0, 0)), sg.Button("flush", key="flush_microflu",  pad=(10, 0, 0, 0)), sg.Button("HALT", key="halt_microflu", pad=(10, 0, 0, 0)), sg.Button("Cont", key="cont_microflu"), sg.Button("zero", key="zero_micro")]]), 
-        sg.Tab("Autofocus", [[sg.Text(key='-TEXT_METRIC-')],
 
+tab_micro_flu = [[sg.Button("Sample measurement", key="sample_measurement",  pad=(10, 10, 10, 0)), sg.Button("Filling", key="filling_microflu")], [sg.Button("FLUSH", key="full_flush_microflu",  pad=(10, 0, 0, 0)), sg.Button("flush", key="flush_microflu",  pad=(10, 0, 0, 0)), sg.Button("HALT", key="halt_microflu", pad=(10, 0, 0, 0)), sg.Button("Cont", key="cont_microflu"), sg.Button("zero", key="zero_micro")]]
+tab_Autofocus = [[sg.Text(key='-TEXT_METRIC-')],
         [sg.Frame("x / y plan", pad = (10, 0), layout = [[sg.Button("↑", key='-UP-', pad=(25, 5, 0, 0))], [sg.Button("←", key='-LEFT-'), sg.Button("→", key='-RIGHT-')], [sg.Button("↓", key='-DOWN-', pad=(25, 5, 0, 0))], ]), 
         sg.Frame("z plan", pad = (10, 0), layout = [[sg.Button("↑", key='-UP2-', pad=(25, 5, 0, 0))], [], [sg.Button("↓", key='-DOWN2-', pad=(25, 5, 0, 0))], ])],
-
         [sg.T("\n", size=(20 , 1), key='-wait-msg-')],
         [sg.Button("Autofocus", key="Autofocus", pad=(10, 10) ), sg.Button("Set to 0", key="set_to_zero", pad=(10, 10)), sg.Button("Move to 0", key="move_to_zero", pad=(10, 10)), sg.Button("Reset", key="-reset_zoom-", pad=(10, 10) )], 
-        
-        ]),
-        sg.Tab("Image processing", [[sg.Text("Numer of spot :"), sg.Spin([i for i in range(6)], initial_value=3, pad = (0, 10, 0, 0),key='-nbr_spot-', font=('Helvetica 12'), enable_events=True)], [sg.Text("Background number :"), sg.Spin([i for i in range(6)], initial_value=3, key='-nbr_bg-', font=('Helvetica 12'), enable_events=True)], [sg.Button("Live acquisition", key="acquisition",  pad=(10, 10)), sg.Button("Process", key="imgproc",  pad=(10, 10))]]),
+        ]
+tab_img_processing = [[sg.Text("Numer of spot :"), sg.Spin([i for i in range(6)], initial_value=3, pad = (0, 10, 0, 0),key='-nbr_spot-', font=('Helvetica 12'), enable_events=True)], [sg.Text("Background number :"), sg.Spin([i for i in range(6)], initial_value=3, key='-nbr_bg-', font=('Helvetica 12'), enable_events=True)], [sg.Button("Live acquisition", key="acquisition",  pad=(10, 10)), sg.Button("Process", key="imgproc",  pad=(10, 10))]]
+
+
+print_metric = [
+    [sg.TabGroup([[sg.Tab("Microfluidics", tab_micro_flu), 
+        sg.Tab("Autofocus", tab_Autofocus),
+        sg.Tab("Image processing", tab_img_processing),
         ]], expand_x=True)],
 
     [sg.Text(' '*15 + '-'*15 + "   Camera settings   " + '-'*15)],
@@ -144,7 +148,7 @@ layout = [
         sg.Column(img_to_print),
         sg.VSeperator(),
         sg.Column(print_metric, element_justification='left',
-                  expand_x=True, size=(100, 560)),
+                  expand_x=True, size=(100, 575)),
     ]
 ]
 
@@ -222,7 +226,7 @@ def get_bluriness_metric():
         img_str = base64.b64encode(buffered.getvalue())
         window['-GRAPH-'].DrawImage(data = img_str, location = (camera_img_size[1], camera_img_size[0]))
 
-        window.refresh()
+        # window.refresh() # TODO
 
     # TODO Choose metric to use
     # return bluriness_metric.blurre_JPEG_size_b(path + "/tmp.png") / 8 / 1000
@@ -545,17 +549,14 @@ def update():
                 zoom_pos_0 = (0, 0)
                 zoom_pos_1 = (camera_img_size[1], camera_img_size[0])
             elif zoom_pos_1[0] < zoom_pos_0[0] and zoom_pos_1[1] < zoom_pos_0[1]:
-                print("0")
                 tmp = zoom_pos_0
                 zoom_pos_0 = zoom_pos_1
                 zoom_pos_1 = tmp
             elif zoom_pos_1[0] > zoom_pos_0[0] and zoom_pos_1[1] < zoom_pos_0[1]:
-                print("1")
                 tmp = zoom_pos_0
                 zoom_pos_0 = (zoom_pos_0[0], zoom_pos_1[1])
                 zoom_pos_1 = (zoom_pos_1[0], tmp[1])
             elif zoom_pos_1[0] < zoom_pos_0[0] and zoom_pos_1[1] > zoom_pos_0[1]:
-                print("2")
                 tmp = zoom_pos_0
                 zoom_pos_0 = (zoom_pos_1[0], zoom_pos_0[1])
                 zoom_pos_1 = (tmp[0], zoom_pos_1[1])
@@ -630,18 +631,26 @@ def update():
         # img = _photo_image(image_data)
         img_zoom = _photo_image(image_data_zoom)
 
-    buffered = BytesIO()
-    Image.fromarray(image_data).save(buffered, format="PNG")
-    img_str = base64.b64encode(buffered.getvalue())
-    window['-GRAPH-'].DrawImage(data = img_str, location = (0, 0))
-    # window['-IMAGE2-'].update(data=img)
-    window['-IMAGE_ZOOM-'].update(data=img_zoom)
+        buffered = BytesIO()
+        Image.fromarray(image_data).save(buffered, format="PNG", compress_level = 1)  
+        tmp = buffered.getvalue()
+        img_str = base64.b64encode(tmp)
+        del tmp
+        buffered.close()
+        del buffered
+        window['-GRAPH-'].DrawImage(data = img_str, location = (0, 0))
+        # window['-IMAGE2-'].update(data=img)
+        window['-IMAGE_ZOOM-'].update(data=img_zoom) 
+        
 
 # Run the Event Loop
 while True:
     update()
-    event, values = window.read(timeout=50) # TODO Timeout opt (lower to have  but makes the program slower)
-
+    
+    test_time_1 = time.time()
+    event, values = window.read(timeout = 200) # TODO Timeout opt (lower to have  but makes the program slower) : 50
+    print(f"1) Done in {time.time() - test_time_1} sec")
+    
     if event == "Exit" or event == sg.WIN_CLOSED:
         break
     elif event == "Autofocus":  # Autofocus
