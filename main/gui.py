@@ -102,7 +102,9 @@ explanations = [
     [sg.Text("Welcome on our user interface ! \nThis GUI aims at controlling our system made of microfluidics pump, an autofocusing microscope and an image processing to detect IL-6 spots.")]
 ]
 
-tab_micro_flu = [[sg.Button("Sample measurement", key="sample_measurement",  pad=(10, 10, 10, 0)), sg.Button("Filling", key="filling_microflu")], [sg.Button("FLUSH", key="full_flush_microflu",  pad=(10, 0, 0, 0)), sg.Button("flush", key="flush_microflu",  pad=(10, 0, 0, 0)), sg.Button("HALT", key="halt_microflu", pad=(10, 0, 0, 0)), sg.Button("Cont", key="cont_microflu"), sg.Button("zero", key="zero_micro")]]
+tab_micro_flu = [[sg.Button("Sample measurement", key="sample_measurement",  pad=(10, 10, 10, 0)), sg.Button("Filling", key="filling_microflu")], 
+        [sg.Button("FLUSH", key="full_flush_microflu",  pad=(10, 0, 0, 0)), sg.Button("flush", key="flush_microflu",  pad=(10, 0, 0, 0)), sg.Button("HALT", key="halt_microflu", pad=(10, 0, 0, 0)), sg.Button("Cont", key="cont_microflu"), sg.Button("zero", key="zero_micro")],
+        [sg.Button("EmptyTrash", key="empty_trash")]]
 tab_Autofocus = [[sg.Text(key='-TEXT_METRIC-')],
         [sg.Frame("x / y plan", pad = (10, 0), layout = [[sg.Button("↑", key='-UP-', pad=(25, 5, 0, 0))], [sg.Button("←", key='-LEFT-'), sg.Button("→", key='-RIGHT-')], [sg.Button("↓", key='-DOWN-', pad=(25, 5, 0, 0))], ]), 
         sg.Frame("z plan", pad = (10, 0), layout = [[sg.Button("↑", key='-UP2-', pad=(25, 5, 0, 0))], [], [sg.Button("↓", key='-DOWN2-', pad=(25, 5, 0, 0))], ])],
@@ -224,6 +226,7 @@ def get_bluriness_metric():
         buffered = BytesIO()
         Image.fromarray(image_data).save(buffered, format="PNG")
         img_str = base64.b64encode(buffered.getvalue())
+        window['-GRAPH-'].erase()
         window['-GRAPH-'].DrawImage(data = img_str, location = (camera_img_size[1], camera_img_size[0]))
 
         # window.refresh() # TODO
@@ -638,6 +641,7 @@ def update():
         del tmp
         buffered.close()
         del buffered
+        window['-GRAPH-'].erase()
         window['-GRAPH-'].DrawImage(data = img_str, location = (0, 0))
         # window['-IMAGE2-'].update(data=img)
         window['-IMAGE_ZOOM-'].update(data=img_zoom) 
@@ -697,6 +701,7 @@ while True:
     elif event == "sample_measurement":  # Microfluidics sample_measurement
         print("perform sample measurement") # TODO verify
         microflu.dispense_blocking_and_sample(lsp)
+        # microflu.sequential_dispense(lsp)
 
     elif event == "halt_microflu":  # Microfluidics flush 
         print("microfluidics halted")
@@ -705,6 +710,10 @@ while True:
     elif event == "cont_microflu":
         print("continuing from halting point")
         microflu.continue_from_halt(lsp)
+
+    elif event == "empty_trash":
+        print("Emptying trash")
+        microflu.empty_trash(lsp)
 
     elif event == "zero_micro":
         print("continuing zero")

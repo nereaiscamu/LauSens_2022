@@ -185,17 +185,56 @@ def clean_sample_cartridge_trash(lsp):
     clean_sample=change_to_valve_fastest(sample)+wait(200)+dispense_position(1500)+wait(200)
     clean_cartridge=change_to_valve_fastest(cartridge)+wait(200)+dispense_position(1500)+wait(200)
     clean_trash=change_to_valve_fastest(trash)+wait(200)+go_to_absolute_pump_position(0)+wait(200)
-    clean_blocking=change_to_valve_fastest(blocking)+wait(200)+go_to_absolute_pump_position(0)+wait(200)
 
-    air_cleaning=change_to_valve_fastest(sample)+wait(200)+go_to_absolute_pump_position(1000)+wait(200)+change_to_valve_fastest(cartridge)+wait(200)+go_to_absolute_pump_position(0)+wait(200)+change_to_valve_fastest(cartridge)+wait(200)+go_to_absolute_pump_position(2000)+wait(200)+change_to_valve_fastest(trash)+wait(200)+go_to_absolute_pump_position(0)+wait(200)+go_to_absolute_pump_position(1000)+change_to_valve_fastest(blocking)+wait(200)+go_to_absolute_pump_position(0)+wait(200)
+    air_cleaning=change_to_valve_fastest(sample)+wait(200)+go_to_absolute_pump_position(1000)+wait(200)+change_to_valve_fastest(cartridge)+wait(200)+go_to_absolute_pump_position(0)+wait(200)+change_to_valve_fastest(cartridge)+wait(200)+go_to_absolute_pump_position(2000)+wait(200)+change_to_valve_fastest(trash)+wait(200)+go_to_absolute_pump_position(0)
 
     #at the end of this, have the end of 5 on air to aspirate air
-    sequence_1=fill_detergent+clean_sample+fill_detergent+clean_cartridge+fill_detergent+clean_trash+fill_detergent+clean_blocking+fill_water+clean_sample+fill_water+clean_sample+fill_water+clean_trash+fill_water+clean_blocking
+    sequence_1=fill_detergent+clean_sample+fill_detergent+clean_cartridge+fill_detergent+clean_trash+fill_water+clean_sample+fill_water+clean_sample+fill_water+clean_trash
     sequence_2=repeat_sequence(air_cleaning,2)
 
     final_sequence=peak_speed(1000)+sequence_1+peak_speed(500)+sequence_2
 
     write_sequence_to_pump(lsp, final_sequence)
+
+def empty_trash(lsp):
+    trash = 1
+    water = 2
+    detergent = 3
+    blocking = 4
+    cartridge = 5
+    sample = 6
+
+    set_speed=peak_speed(500)
+
+    fill=change_to_valve_fastest(sample)+wait(200)+pickup_position(2500)+wait(200)
+    empty_trash=change_to_valve_fastest(trash)+wait(200)+go_to_absolute_pump_position(0)
+
+    final_sequence=set_speed+fill+empty_trash
+
+    write_sequence_to_pump(lsp, final_sequence)
+
+def sequential_dispense(lsp):
+    trash = 1
+    water = 2
+    detergent = 3
+    blocking = 4
+    cartridge = 5
+    sample = 6
+
+    set_speed=peak_speed(5)
+
+    fill_sample_tube=change_to_valve_fastest(sample)+wait(200)+pickup_position(80)+wait(200)
+    pickup_air=change_to_valve_fastest(trash)+wait(200)+pickup_position(20)+wait(200)
+    pickup_sample=change_to_valve_fastest(sample)+wait(200)+pickup_position(20)+wait(200)
+    dispense=change_to_valve_fastest(cartridge)+wait(200)+go_to_absolute_pump_position(0)
+
+    sequence_1=pickup_air+dispense+pickup_sample+dispense
+    sequence_2=repeat_sequence(sequence_1,2)
+
+    final_sequence=peak_speed(5)+fill_sample_tube+dispense+set_speed+sequence_2
+
+    write_sequence_to_pump(lsp, final_sequence)
+
 
 
 def clean_all(lsp):
@@ -206,11 +245,11 @@ def clean_all(lsp):
     clean_4_5=change_to_valve_fastest(4)+wait(200)+go_to_absolute_pump_position(1500)+wait(200)+change_to_valve_fastest(5)+wait(200)+go_to_absolute_pump_position(0)+wait(200)
     clean_6=change_to_valve_fastest(6)+wait(200)+go_to_absolute_pump_position(0)+wait(200)
 
-    #first bleach, then detergent, then ethanol, then DI water, then air, twice for each step
+    #first bleach, then detergent, then ethanol, then DI water, then air, twice for each step, 4 times for air
 
     sequence_1=fill+clean_1_2+fill+clean_4_5+fill+clean_6
     sequence_2=repeat_sequence(sequence_1,2)+wait(5000)
-    sequence_3=repeat_sequence(sequence_2,5)
+    sequence_3=repeat_sequence(sequence_2,6)
     final_sequence=set_speed+sequence_3
 
     write_sequence_to_pump(lsp, final_sequence)
