@@ -7,6 +7,10 @@ Created on Tue Aug  2 14:06:06 2022
 import numpy as np
 import cv2
 import sys
+from numpy.random import default_rng
+import numpy.matlib
+import skimage
+from skimage import exposure
 
 
 #---------------------------------------------------------------------------------------------------------------------------------------
@@ -119,12 +123,13 @@ def create_circular_mask(img_list, radius, ROIs):
 def apply_mask(img_list, masks):
     lst = []
     for i, mask in enumerate(masks):
-        masked_imgs = np.zeros([np.shape(img_list)[0], np.shape(img_list)[1], np.shape(img_list)[2]], dtype = np.uint8)
+        #masked_imgs = np.zeros([np.shape(img_list)[0], np.shape(img_list)[1], np.shape(img_list)[2]], dtype = np.uint8)
+        masked_imgs = []
         for j,img in enumerate(img_list):
             masked_img = img.copy()
             masked_img[~mask] = 0
-            masked_imgs[j,:,:] = masked_img
-        lst.append(list(masked_imgs))
+            masked_imgs.append(masked_img.astype(np.uint8))
+        lst.append(masked_imgs)
     return lst
 
 def pixel_ratio(img_list, masks, n_spots, n_ROIs):
@@ -181,6 +186,11 @@ def linear_model(signal):
     return(model.coef_, r_sq)
 
 
+def equalize(img_list):
+    imgs_eq = []
+    for i, img in enumerate(img_list):
+        imgs_eq.append((exposure.equalize_hist(img)*255).astype(np.uint8))
+    return imgs_eq
 
 #, (sig_per_img/num_white_mask)*100, (bg_per_img/num_white_mask)*100
 
@@ -219,11 +229,27 @@ def linear_model(signal):
 
 
 def thresh_Otsu_Bin(img_list):
-    thresh_list = np.zeros([np.shape(img_list)[0], np.shape(img_list)[1], np.shape(img_list)[2]], dtype = np.uint8)
+    #thresh_list = np.zeros([np.shape(img_list)[0], np.shape(img_list)[1], np.shape(img_list)[2]], dtype = np.uint8)
+    thresh_list = []
     for i, img in enumerate(img_list):
         ret, thresh1 = cv2.threshold(img,0,255,cv2.THRESH_OTSU)
-        thresh_list[i, :,:] = thresh1
-    return list(thresh_list)
+        thresh_list.append(thresh1.astype(np.uint8))
+    return thresh_list
+
+
+def LoG(img_list):
+    ddepth = cv2.CV_16S
+    kernel_size = 5
+    log_list = []
+    for i, img in enumerate(img_list):
+        print(np.shape(img))
+        # Remove noise by blurring with a Gaussian filter
+        src_gray = cv2.GaussianBlur(img, (3, 3), 0)
+        dst = cv2.Laplacian(src_gray, ddepth, ksize=kernel_size)
+        abs_dst = cv2.convertScaleAbs(dst)
+        log_list.append(abs_dst)
+        
+    return log_list
 
 def invert_imgs(imgs):
     '''
@@ -242,15 +268,15 @@ def invert_imgs(imgs):
     
     return imgs_inv
         
-def opening(img_list, iterations = 1):
-    open_list = np.zeros([np.shape(img_list)[0], np.shape(img_list)[1], np.shape(img_list)[2]], dtype= np.uint8)
-    kernel = np.ones((5,5),np.uint8)
+def opening(img_list, iterations = 1, kernel_size = 5):
+    kernel = np.ones((kernel_size,kernel_size),np.uint8)
+    open_list = []
     
     for i, img in enumerate(img_list):
         opening = cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel, iterations) #original code had 2 iterations
-        open_list[i, :,:] = opening
+        open_list.append(opening.astype(np.uint8))
         
-    return list(open_list)
+    return open_list
 
 
 #%%Background smoothing functions (adapted from SensUs 2019, similar to Matlab code of BIOS lab)
@@ -291,7 +317,7 @@ def polyfit2d_alt1(x, y, z, order=3):
     m, _, _, _ = np.linalg.lstsq(G, z)
     return m
 
-def smooth_background(imgs, rescale_factor=0.2, poly_deg=[1,2]):
+def smooth_background(imgs, rescale_factor=0.2, poly_deg=[1,1]): #before it was 1,2
     '''
     Function from SensUs 2019
     Smooths the background of the image by modeling the background with a polynomial 
@@ -332,3 +358,29 @@ def smooth_background(imgs, rescale_factor=0.2, poly_deg=[1,2]):
         imgs_corrected.append(img_corrected.astype(np.uint8))
     
     return imgs_corrected
+
+
+def linfit_3D(imgs):
+    '''Method for linear fit and background correction from here:
+    https://de.mathworks.com/matlabcentral/answers/45680-faster-method-for-polyfit-along-3rd-dimension-of-a-large-3d-matrix#answer_55902
+    '''
+    newarray = np.dstack(imgs)
+    size = np.shape(newarray)
+    rng = default_rng(42)
+    num = size[2]
+    x = rng.random(num)
+    z = 1 # first degree polynomial
+    V =  np.c_[np.ones((num, 1)), np.cumprod((np.matlib.repmat(x, 1, z).reshape(z,num).T), 1)]
+    M = V.dot(np.linalg.pinv(V))
+    
+    p1 = np.transpose(newarray, (2, 0, 1))
+    p1 = p1.reshape(size[2], size[0]*size[1])
+    polyCube = M.dot(p1)
+    polyCube = np.reshape(polyCube,(size[2], size[0],size[1]));
+    polyCube = np.transpose(polyCube,[1, 2, 0]);
+    
+    imgs_poly = []
+    
+    for i in np.arange(0,num):
+        imgs_poly.append(polyCube[:,:,i].astype(np.uint8))
+    return imgs_poly

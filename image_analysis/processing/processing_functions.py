@@ -67,12 +67,13 @@ def open_images_NC(path):
     print('\n Opening images '+str(path)+' ...')
     
     os.chdir(path)  #TODO: NOT SURE ABOUT THIS
-    files = sorted(filter(os.path.isfile, os.listdir(path)), key=os.path.getctime)  # ordering the images by date of creation
-
+    #files = sorted(filter(os.path.isfile, os.listdir(path)), key=os.path.getctime)  # ordering the images by date of creation
+    files = sorted(filter(os.path.isfile, os.listdir(path)))  # ordering the images by name
     #imgs = np.zeros((len(files), 3648, 5472))  # list with all the images (jpg or png). TODO: set to size of image
     imgs = []
 
     for i, filename in enumerate(files):
+        print(filename)
     #for filename in sorted(os.listdir(path)):
         img = cv2.imread(filename, cv2.IMREAD_GRAYSCALE) #changed by NC to run with other camera images
         imgs.append(img) 

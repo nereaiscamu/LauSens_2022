@@ -18,6 +18,12 @@ from analysis.Analyse_results_with_connected_components import Measure
 import cv2
 from Nc_functions import *
 from sklearn.linear_model import LinearRegression
+from skimage import exposure
+
+# from numpy.random import default_rng
+# import numpy.matlib
+# import skimage
+
 
 #from analysis.Select_ROI import execute_roi
 #from AcquireAndSave import execute_capture
@@ -59,13 +65,41 @@ ROIs = Select_ROI_Dynamic(ROI_PATH, n_ROIs, scale_f = 4 )
 #%%
 width = height = int(ROIs[0,2]*2.5)
 radius = ROIs[0][2]
-
 inv_imgs = invert_imgs(imgs)
+
+#%%
+
 smoothed = smooth_background(inv_imgs)
-open_imgs = opening(smoothed, iterations = 1)
-#bin_imgs = thresh_Otsu_Bin(open_imgs)
+#%%
+imgs_eq = equalize(smoothed)
+  
+
+#%%
+bin_imgs = thresh_Otsu_Bin(imgs_eq)
+
+# binary_mask = inv_imgs[0] < 110
+# fig, ax = plt.subplots()
+# plt.imshow(binary_mask, cmap="gray")
+# plt.show()
+
+# bin_imgs = []
+# bin_imgs.append(binary_mask)
+
+#%%
+
+open_imgs = opening(bin_imgs, iterations = 1, kernel_size = 5)
+
+
+op_img = Image.fromarray(bin_imgs[0])    
+        
+op_img.show()  
+
+#%%
 masks = create_circular_mask(open_imgs, radius, ROIs)
+#%%
 masked_imgs = apply_mask(open_imgs, masks)
+
+#%%
 result = pixel_ratio(masked_imgs, masks, n_spots, n_ROIs)
 slope, R2 = linear_model(result)
 
@@ -74,29 +108,60 @@ AN ESTIMATE OF THE CONCENTRATION
 Also, we can use the connectivity to check the number of NP
 Link here: https://stackoverflow.com/questions/35854197/how-to-use-opencvs-connectedcomponentswithstats-in-python'''
 
-#%%
 
-img_test = open_imgs[0]
-connectivity = 8  # You need to choose 4 or 8 for connectivity type
-num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(img_test , connectivity , cv2.CV_32S)
-nb_pixels = 0
-for c in range(0, num_labels):
-    if c == 0:
-        #print("background")
-        continue
-    else:
-        #print("Signal")
-        area = stats[c, cv2.CC_STAT_AREA]
-        if((area>9) & (area<90)): #TODO: before it was 3, 30
-            nb_pixels = nb_pixels + area 
+
+
+
+
+# inv_imgs = invert_imgs(imgs)
+# bin_imgs = thresh_Otsu_Bin(inv_imgs)
+
+# img_test = bin_imgs[0]
+# connectivity = 8  # You need to choose 4 or 8 for connectivity type
+# num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(img_test , connectivity , cv2.CV_32S)
+# nb_pixels = 0
+# for c in range(0, num_labels):
+#     if c == 0:
+#         #print("background")
+#         continue
+#     else:
+#         #print("Signal")
+#         area = stats[c, cv2.CC_STAT_AREA]
+#         if((area>9) & (area<90)): #TODO: before it was 3, 30
+#             nb_pixels = nb_pixels + area 
             
-labels_img = Image.fromarray(labels)    
+# labels_img = Image.fromarray(labels)    
         
-labels_img.show()             
+# labels_img.show()             
 
-percent_pixels = nb_pixels / stats[0, cv2.CC_STAT_AREA]*100
+# percent_pixels = nb_pixels / stats[0, cv2.CC_STAT_AREA]*100
 
-print(percent_pixels)
+# print(percent_pixels)
+# #%%
 
+# histogram, bin_edges = np.histogram(inv_imgs[0], bins=256, range=(0, 1))
+
+# #%%
+# t = skimage.filters.threshold_otsu(inv_imgs[0])
+# print("Found automatic threshold t = {}.".format(t))
+
+
+
+# binary_mask = smoothed[0] < 120
+
+# fig, ax = plt.subplots()
+# plt.imshow(binary_mask, cmap="gray")
+# plt.show()
+
+
+# #%%
+# plt.figure()
+# plt.title("Grayscale Histogram")
+# plt.xlabel("grayscale value")
+# plt.ylabel("pixel count")
+# plt.xlim([0.0, 1.0])  # <- named arguments do not work here
+
+# plt.plot(bin_edges[0:-1], histogram)  # <- or here
+# plt.show()
 
 
