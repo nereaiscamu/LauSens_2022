@@ -534,126 +534,122 @@ def move_to_zero():
 
 # Update/display image and compute/display both bluriness metrics (JPEG size and Laplacian variance) on interace
 def update():
-    image_result = cam.GetNextImage(1000)
+    try:
+        image_result = cam.GetNextImage(100)
 
-    if image_result.IsIncomplete():
-        raise Exception('Image incomplete with image status %d ...' %
-                        image_result.GetImageStatus())
+        if image_result.IsIncomplete():
+            raise Exception('Image incomplete with image status %d ...' %
+                            image_result.GetImageStatus())
+    
+        else:
+            image_data = image_result.GetNDArray()
+            image_result.Release()
 
-    else:
-        image_data = image_result.GetNDArray()
-        image_result.Release()
+            global zoom_pos_0
+            global zoom_pos_1
 
-        global zoom_pos_0
-        global zoom_pos_1
+            if zoom_in == False:
+                if abs(zoom_pos_1[0] - zoom_pos_0[0]) < 5 or abs(zoom_pos_1[1] - zoom_pos_0[1]) < 5:
+                    zoom_pos_0 = (0, 0)
+                    zoom_pos_1 = (camera_img_size[1], camera_img_size[0])
+                elif zoom_pos_1[0] < zoom_pos_0[0] and zoom_pos_1[1] < zoom_pos_0[1]:
+                    tmp = zoom_pos_0
+                    zoom_pos_0 = zoom_pos_1
+                    zoom_pos_1 = tmp
+                elif zoom_pos_1[0] > zoom_pos_0[0] and zoom_pos_1[1] < zoom_pos_0[1]:
+                    tmp = zoom_pos_0
+                    zoom_pos_0 = (zoom_pos_0[0], zoom_pos_1[1])
+                    zoom_pos_1 = (zoom_pos_1[0], tmp[1])
+                elif zoom_pos_1[0] < zoom_pos_0[0] and zoom_pos_1[1] > zoom_pos_0[1]:
+                    tmp = zoom_pos_0
+                    zoom_pos_0 = (zoom_pos_1[0], zoom_pos_0[1])
+                    zoom_pos_1 = (tmp[0], zoom_pos_1[1])
 
-        if zoom_in == False:
-            if abs(zoom_pos_1[0] - zoom_pos_0[0]) < 5 or abs(zoom_pos_1[1] - zoom_pos_0[1]) < 5:
-                zoom_pos_0 = (0, 0)
-                zoom_pos_1 = (camera_img_size[1], camera_img_size[0])
-            elif zoom_pos_1[0] < zoom_pos_0[0] and zoom_pos_1[1] < zoom_pos_0[1]:
-                tmp = zoom_pos_0
-                zoom_pos_0 = zoom_pos_1
-                zoom_pos_1 = tmp
-            elif zoom_pos_1[0] > zoom_pos_0[0] and zoom_pos_1[1] < zoom_pos_0[1]:
-                tmp = zoom_pos_0
-                zoom_pos_0 = (zoom_pos_0[0], zoom_pos_1[1])
-                zoom_pos_1 = (zoom_pos_1[0], tmp[1])
-            elif zoom_pos_1[0] < zoom_pos_0[0] and zoom_pos_1[1] > zoom_pos_0[1]:
-                tmp = zoom_pos_0
-                zoom_pos_0 = (zoom_pos_1[0], zoom_pos_0[1])
-                zoom_pos_1 = (tmp[0], zoom_pos_1[1])
+                image_data = image_data[zoom_pos_0[1]:zoom_pos_1[1], zoom_pos_0[0]:zoom_pos_1[0]]
+                image_data = cv2.resize(image_data, (camera_img_size[1],camera_img_size[0] ) )
+            else: 
+                cv2.line(image_data, zoom_pos_0, (zoom_pos_0[0], tmp_zoom_pos_1[1]), color = (255, 255, 255), thickness = 10)
+                cv2.line(image_data, zoom_pos_0, (tmp_zoom_pos_1[0], zoom_pos_0[1]), color = (255, 255, 255), thickness = 10)
+                cv2.line(image_data, tmp_zoom_pos_1, (zoom_pos_0[0], tmp_zoom_pos_1[1]), color = (255, 255, 255), thickness = 10)
+                cv2.line(image_data, tmp_zoom_pos_1, (tmp_zoom_pos_1[0], zoom_pos_0[1]), color = (255, 255, 255), thickness = 10)
 
-            image_data = image_data[zoom_pos_0[1]:zoom_pos_1[1], zoom_pos_0[0]:zoom_pos_1[0]]
-            image_data = cv2.resize(image_data, (camera_img_size[1],camera_img_size[0] ) )
-        else: 
-            cv2.line(image_data, zoom_pos_0, (zoom_pos_0[0], tmp_zoom_pos_1[1]), color = (255, 255, 255), thickness = 10)
-            cv2.line(image_data, zoom_pos_0, (tmp_zoom_pos_1[0], zoom_pos_0[1]), color = (255, 255, 255), thickness = 10)
-            cv2.line(image_data, tmp_zoom_pos_1, (zoom_pos_0[0], tmp_zoom_pos_1[1]), color = (255, 255, 255), thickness = 10)
-            cv2.line(image_data, tmp_zoom_pos_1, (tmp_zoom_pos_1[0], zoom_pos_0[1]), color = (255, 255, 255), thickness = 10)
+            # Save image
+            # SLOW
+            """
+            img = Image.fromarray(image_data)
+            print("Saving ...")
+            start_time = time.time()
+            # TODO reduce compress_level -> faster but less precise
+            img.save(path + "/tmp.png", compress_level=3)
+            print(f"Done in {time.time() - start_time} sec")
+            """
 
-        # Save image
-        # SLOW
-        """
-        img = Image.fromarray(image_data)
-        print("Saving ...")
-        start_time = time.time()
-        # TODO reduce compress_level -> faster but less precise
-        img.save(path + "/tmp.png", compress_level=3)
-        print(f"Done in {time.time() - start_time} sec")
-        """
+            global live_acqu
+            global acqu_time
+            global acqu_step
+            if live_acqu == True and time.time() - acqu_time >= 30:
+                print("Saving image " + str(acqu_step) + " at time " + str(time.time() - acqu_time))
+                Image.fromarray(image_data).save(path + "/img_proc/images/saved_img_" + str(acqu_step) +".png")
+                acqu_step += 1
+                acqu_time = time.time()
+                if acqu_step >= 10:
+                    live_acqu = False
+                    acqu_step = 0
+                    acqu_time = 0
 
-        global live_acqu
-        global acqu_time
-        global acqu_step
-        if live_acqu == True and time.time() - acqu_time >= 30:
-            print("Saving image " + str(acqu_step) + " at time " + str(time.time() - acqu_time))
-            Image.fromarray(image_data).save(path + "/img_proc/images/saved_img_" + str(acqu_step) +".png")
-            acqu_step += 1
-            acqu_time = time.time()
-            if acqu_step >= 10:
-                live_acqu = False
-                acqu_step = 0
-                acqu_time = 0
+            image_center = (int(image_data.shape[0]/2), int(image_data.shape[1]/2))
+            image_data_zoom = image_data[int(image_center[0] - 100):int(image_center[0] + 100), int(image_center[1] - 100):int(image_center[1] + 100)]
+            image_data_zoom = cv2.resize(
+                image_data_zoom, size_zoom)
 
-        image_center = (int(image_data.shape[0]/2), int(image_data.shape[1]/2))
-        image_data_zoom = image_data[int(image_center[0] - 100):int(image_center[0] + 100), int(image_center[1] - 100):int(image_center[1] + 100)]
-        image_data_zoom = cv2.resize(
-            image_data_zoom, size_zoom)
+            # Draw white rectangle (zoom loc)
+            cv2.line(image_data, (int(image_center[1] - 100), int(image_center[0] - 100)), (int(image_center[1] -100), int(image_center[0] + 100)), color = (255, 255, 255), thickness = 10) 
+            cv2.line(image_data, (int(image_center[1] - 100), int(image_center[0] - 100)), (int(image_center[1] +100), int(image_center[0] - 100)), color = (255, 255, 255), thickness = 10) 
+            cv2.line(image_data, (int(image_center[1] + 100), int(image_center[0] + 100)), (int(image_center[1] -100), int(image_center[0] + 100)), color = (255, 255, 255), thickness = 10) 
+            cv2.line(image_data, (int(image_center[1] + 100), int(image_center[0] + 100)), (int(image_center[1] +100), int(image_center[0] - 100)), color = (255, 255, 255), thickness = 10)
 
-        # Draw white rectangle (zoom loc)
-        cv2.line(image_data, (int(image_center[1] - 100), int(image_center[0] - 100)), (int(image_center[1] -100), int(image_center[0] + 100)), color = (255, 255, 255), thickness = 10) 
-        cv2.line(image_data, (int(image_center[1] - 100), int(image_center[0] - 100)), (int(image_center[1] +100), int(image_center[0] - 100)), color = (255, 255, 255), thickness = 10) 
-        cv2.line(image_data, (int(image_center[1] + 100), int(image_center[0] + 100)), (int(image_center[1] -100), int(image_center[0] + 100)), color = (255, 255, 255), thickness = 10) 
-        cv2.line(image_data, (int(image_center[1] + 100), int(image_center[0] + 100)), (int(image_center[1] +100), int(image_center[0] - 100)), color = (255, 255, 255), thickness = 10)
-
-        # reduce image
-        resized_width, resized_height = [
-            int(i * reducing_factor) for i in image_data.shape]
-        image_data = cv2.resize(
-            image_data, (resized_height, resized_width))
-        image_center = (int(image_data.shape[0]/2), int(image_data.shape[1]/2))
+            # reduce image
+            resized_width, resized_height = [
+                int(i * reducing_factor) for i in image_data.shape]
+            image_data = cv2.resize(
+                image_data, (resized_height, resized_width))
+            image_center = (int(image_data.shape[0]/2), int(image_data.shape[1]/2))
 
 
-        # Testing
-        # # to measure time to update (most of time taken is to save image for computing bluriness)
-        # print("Saving ...")
-        # img = Image.fromarray(image_data)
-        # start_time = time.time()
-        # TODO reduce compress_level -> faster but less precise
-        # img.save(path + "/tmp.png", optimize=True, compress_level=1)
-        # print(f"Done in {time.time() - start_time} sec")
-        window['-TEXT_METRIC-'].update(
-            # "Bluriness metric for this image :\n" +
-            # "Laplacian variance measurement : " + str(bluriness_metric.blurre_lapace_var(path + "/tmp.png")) + " arb. \n" +
-            # bits to kiloBytes
-            # "JPEG size measurement : " + str(bluriness_metric.blurre_JPEG_size_b(path + "/tmp.png") / 8 / 1000) + " kB \n\n" +
-            "Image position (1 unit ≈ 0.65 μm) :\n" + str(pos_camera) + " ≈ " + str(pos_camera * 0.65))
+            # Testing
+            # # to measure time to update (most of time taken is to save image for computing bluriness)
+            # print("Saving ...")
+            # img = Image.fromarray(image_data)
+            # start_time = time.time()
+            # TODO reduce compress_level -> faster but less precise
+            # img.save(path + "/tmp.png", optimize=True, compress_level=1)
+            # print(f"Done in {time.time() - start_time} sec")
+            window['-TEXT_METRIC-'].update(
+                # "Bluriness metric for this image :\n" +
+                # "Laplacian variance measurement : " + str(bluriness_metric.blurre_lapace_var(path + "/tmp.png")) + " arb. \n" +
+                # bits to kiloBytes
+                # "JPEG size measurement : " + str(bluriness_metric.blurre_JPEG_size_b(path + "/tmp.png") / 8 / 1000) + " kB \n\n" +
+                "Image position (1 unit ≈ 0.65 μm) :\n" + str(pos_camera) + " ≈ " + str(pos_camera * 0.65))
 
-        # To display img after
-        # img = _photo_image(image_data)
-        img_zoom = _photo_image(image_data_zoom)
-
-        buffered = BytesIO()
-        Image.fromarray(image_data).save(buffered, format="PNG", compress_level = 1)  
-        tmp = buffered.getvalue()
-        img_str = base64.b64encode(tmp)
-        del tmp
-        buffered.close()
-        del buffered
-        window['-GRAPH-'].erase()
-        window['-GRAPH-'].DrawImage(data = img_str, location = (0, 0))
-        # window['-IMAGE2-'].update(data=img)
-        window['-IMAGE_ZOOM-'].update(data=img_zoom) 
-        
+            # To display img after
+            # img = _photo_image(image_data)
+            img_zoom = _photo_image(image_data_zoom)
+            buffered = BytesIO()
+            Image.fromarray(image_data).save(buffered, format="PNG", compress_level = 1)  
+            img_str = base64.b64encode(buffered.getvalue())
+            buffered.close()
+            window['-GRAPH-'].erase()
+            window['-GRAPH-'].DrawImage(data = img_str, location = (0, 0))
+            # window['-IMAGE2-'].update(data=img)
+            window['-IMAGE_ZOOM-'].update(data=img_zoom) 
+    except:
+        pass 
 
 # Run the Event Loop
 while True:
     update()
     
-    test_time_1 = time.time()
-    event, values = window.read(timeout = 200) # TODO Timeout opt (lower to have  but makes the program slower) : 50
-    print(f"1) Done in {time.time() - test_time_1} sec")
+    event, values = window.read(timeout = 20) # TODO Timeout opt (lower to have  but makes the program slower) : 50
     
     if event == "Exit" or event == sg.WIN_CLOSED:
         break
