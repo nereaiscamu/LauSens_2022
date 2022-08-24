@@ -117,7 +117,7 @@ tab_micro_flu = [
         sg.Button("Cont", key="cont_microflu"),
         sg.Button("zero", key="zero_micro"),
     ],
-    [sg.Button("EmptyTrash", key="empty_trash")],
+    [sg.Button("EmptyTrash", key="empty_trash", pad=(10, 10, 0, 0))],
 ]
 tab_Autofocus = [
     [sg.Text(key="-TEXT_METRIC-")],
@@ -151,7 +151,7 @@ tab_Autofocus = [
 ]
 tab_img_processing = [
     [
-        sg.Text("Numer of spot :"),
+        sg.Text("Number of spot :"),
         sg.Spin(
             [i for i in range(6)],
             initial_value=3,
@@ -730,7 +730,9 @@ pos_camera = np.array([0, 0, 0])
 # Live acquisition enable
 live_acqu = False
 acqu_step = 0
+consecutive_nbr = 0
 acqu_time = 0
+consecutive_time = 0
 
 # Motor moving
 warning_msg = False
@@ -839,22 +841,36 @@ def update():
             global live_acqu
             global acqu_time
             global acqu_step
+            global consecutive_nbr
+            global consecutive_time
             if live_acqu == True and time.time() - acqu_time >= 30:
-                print(
-                    "Saving image "
+                if time.time() - consecutive_time >= 2:
+
+                    print(
+                    "Saving image at step "
                     + str(acqu_step)
+                    + " numbered "
+                    + str(consecutive_nbr)
                     + " at time "
                     + str(time.time() - acqu_time)
-                )
-                Image.fromarray(image_data).save(
-                    path + "/img_proc/images/saved_img_" + str(acqu_step) + ".png"
-                )
-                acqu_step += 1
-                acqu_time = time.time()
-                if acqu_step >= 10:
-                    live_acqu = False
-                    acqu_step = 0
-                    acqu_time = 0
+                    )
+
+                    Image.fromarray(image_data).save(
+                        path + "/img_proc/images/saved_img_" + str(acqu_step) + "-" + str(consecutive_nbr) + ".jpeg",
+                    )
+
+                    if consecutive_nbr >= 4:
+                        acqu_time = time.time()
+                        consecutive_nbr = 0
+                        acqu_step += 1
+                        if acqu_step >= 2*30:
+                            live_acqu = False
+                            consecutive_nbr = 0
+                            acqu_step = 0
+                            acqu_time = 0
+                    else:
+                        consecutive_nbr += 1
+                    consecutive_time = time.time()
 
             image_center = (int(image_data.shape[0] / 2), int(image_data.shape[1] / 2))
             image_data_zoom = image_data[
@@ -981,6 +997,7 @@ while True:
         live_acqu = True
         acqu_step = 0
         acqu_time = time.time() - 30
+        consecutive_time = time.time()
 
     elif event == "imgproc":  # Image processing
         print("perform image processing")

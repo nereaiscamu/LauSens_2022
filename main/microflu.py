@@ -610,7 +610,7 @@ def dispense_blocking_and_sample_2(lsp):
             + wait(2000)
             + go_to_absolute_pump_position(0)
             + wait(2000),
-            3,
+            80
         )
     )
     dispense_water = (
