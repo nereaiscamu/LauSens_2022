@@ -6,8 +6,8 @@ Welcome to LauSens 2022 repo.
 
 Folders
 
-- image_analysis : contains code for image analysis & processing
-- autofocus : contains code for image auto-focusing
-- utilities : contains utility code
+- `image_analysis` : contains code for image analysis & processing
+- `main` : contains code for controlling microfluidics pump, auto-focusing microscope and image processing
+- `utilities` : contains utility code
 
 The LauSens EPFL team 2022.

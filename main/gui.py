@@ -266,7 +266,7 @@ sg.theme("SystemDefault")
 
 AppFont = "Any 10"
 window = sg.Window(
-    "LauSens - Autofocus Interface",
+    "LauSens - User interface",
     layout,
     resizable=True,
     no_titlebar=False,
@@ -275,9 +275,15 @@ window = sg.Window(
 ).Finalize()
 window.maximize()
 
-# window2 = sg.Window("LauSens - Autofocus Interface",
-#                    layout2, resizable=True, no_titlebar=False, auto_size_buttons=True, font=AppFont).Finalize()
-# window2.set_alpha(0)
+window2 = sg.Window(
+    "Autofocus plots",
+    layout2,
+    resizable=True,
+    no_titlebar=False,
+    auto_size_buttons=True,
+    font=AppFont,
+).Finalize()
+window2.set_alpha(0)
 
 image = ImageTk.PhotoImage(image=im)
 window["-LOGO-"].update(data=image)
@@ -400,6 +406,7 @@ def get_bluriness_metric():
         ]
         image_data = cv2.resize(image_data, (resized_height, resized_width))
 
+        # Save image
         tmp = Image.fromarray(image_data)
         # TODO reduce compress_level -> faster but less precise
         tmp.save(path + "/tmp.png", compress_level=3)
@@ -445,7 +452,6 @@ def estimate_step_time(step):
     # step 200 takes around 5 sec => sleep of 6
     # step 100 takes around 3 sec => sleep of 4
     # step 20 takes around 2 sec => sleep of 3
-    # TODO Optimize to have finer estimation
     time_for_step = 2
     time = int(time_for_step + step * 1 / 70)
     return time
@@ -531,7 +537,7 @@ def autofocus_simple(pos_camera):
             down = True
 
     # Testing
-    # print("Under focus (went to much DOWN2)")
+    # print("Under focus (went too much DOWN2)")
 
     # TODO Param 2 :
     range_curve = 16  # Must be > range_curve
@@ -558,7 +564,7 @@ def autofocus_simple(pos_camera):
     time.sleep(time_for_step * (range_curve - estimate_focal_point))
     best = get_bluriness_metric()
 
-    # Empirical compensation (we generally went to far)
+    # Empirical compensation (we generally went to far) for backlash lag
     focus = False
     while focus == False:
         move_along_axis(pos_camera, "-DOWN2-", step)
@@ -584,9 +590,6 @@ class Canvas(FigureCanvasTkAgg):
 
 
 # Autofocus based on paper
-# TODO DO NOT USE STILL UNDER DEVELOPPMENT/TEST
-
-
 def smart_z_stack(pos_camera):
     print("i)")
     range_first_curve = 16
@@ -631,8 +634,8 @@ def smart_z_stack(pos_camera):
     fig.tight_layout()
     canvas = Canvas(fig, window2["figCanvas"].Widget)
     canvas.draw()
-    # window2.set_alpha(1)
-    # window2.refresh()
+    window2.set_alpha(1)
+    window2.refresh()
 
     backlash = 0
     tmp = round(
@@ -693,7 +696,7 @@ def smart_z_stack(pos_camera):
         fig.tight_layout()
         canvas = Canvas(fig, window2["figCanvas"].Widget)
         canvas.draw()
-        # window2.refresh()
+        window2.refresh()
 
         estimate_focal_point = np.argmax(stack_9_img[0])
         print("Estimated focal point : ", estimate_focal_point)
@@ -717,6 +720,8 @@ def smart_z_stack(pos_camera):
 
         # Testing
         # x = input() # gives time for debugging
+
+    print("iv)")
 
 
 # Position of camera RELATIVE (when launching soft. position of camera is (0, 0, 0))
@@ -831,17 +836,6 @@ def update():
                     thickness=10,
                 )
 
-            # Save image
-            # SLOW
-            """
-            img = Image.fromarray(image_data)
-            print("Saving ...")
-            start_time = time.time()
-            # TODO reduce compress_level -> faster but less precise
-            img.save(path + "/tmp.png", compress_level=3)
-            print(f"Done in {time.time() - start_time} sec")
-            """
-
             global live_acqu
             global acqu_time
             global acqu_step
@@ -906,13 +900,13 @@ def update():
             image_data = cv2.resize(image_data, (resized_height, resized_width))
             image_center = (int(image_data.shape[0] / 2), int(image_data.shape[1] / 2))
 
-            # Testing
-            # # to measure time to update (most of time taken is to save image for computing bluriness)
-            # print("Saving ...")
+            # Save image
+            # SLOW
             # img = Image.fromarray(image_data)
+            # print("Saving ...")
             # start_time = time.time()
             # TODO reduce compress_level -> faster but less precise
-            # img.save(path + "/tmp.png", optimize=True, compress_level=1)
+            # img.save(path + "/tmp.png", compress_level=3)
             # print(f"Done in {time.time() - start_time} sec")
             window["-TEXT_METRIC-"].update(
                 # "Bluriness metric for this image :\n" +
@@ -926,7 +920,6 @@ def update():
             )
 
             # To display img after
-            # img = _photo_image(image_data)
             img_zoom = _photo_image(image_data_zoom)
             buffered = BytesIO()
             Image.fromarray(image_data).save(buffered, format="PNG", compress_level=1)
@@ -951,10 +944,24 @@ while True:
     if event == "Exit" or event == sg.WIN_CLOSED:
         break
     elif event == "Autofocus":  # Autofocus
-        print("perform autofocus")
         # AUTOFOCUS ALGO TO CHOOSE :
-        # autofocus_simple(pos_camera)
-        autofocus_fast(pos_camera)
+        sg.popup_non_blocking(
+            "Autofocusing in process",
+            title="Info",
+            auto_close=True,
+            non_blocking=True,
+        )
+        print("perform autofocus")
+        autofocus_simple(pos_camera)
+        # autofocus_fast(pos_camera)
+        # smart_z_stack(pos_camera)
+        sg.popup_non_blocking(
+            "Autofocusing done",
+            title="Info",
+            auto_close=True,
+            non_blocking=True,
+            auto_close_duration=1,
+        )
 
     elif event == "set_to_zero":  # Set current position to be the initial position
         print("perform set to 0")
@@ -1067,4 +1074,4 @@ cam_list.Clear()
 system.ReleaseInstance()
 
 window.close()
-# window2.close()
+window2.close()
