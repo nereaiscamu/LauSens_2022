@@ -953,8 +953,8 @@ while True:
     elif event == "Autofocus":  # Autofocus
         print("perform autofocus")
         # AUTOFOCUS ALGO TO CHOOSE :
-        autofocus_simple(pos_camera)
-        # autofocus_fast(pos_camera)
+        # autofocus_simple(pos_camera)
+        autofocus_fast(pos_camera)
 
     elif event == "set_to_zero":  # Set current position to be the initial position
         print("perform set to 0")
@@ -985,17 +985,18 @@ while True:
 
     elif event == "flush_microflu":  # Microfluidics flush
         print("perform flush")
-        microflu.clean_sample_cartridge_trash(lsp)  # TODO verify
+        microflu.clean_sample_cartridge_trash(lsp)
 
     elif event == "filling_microflu":  # Microfluidics filling
         print("perform filling")
         microflu.filling_pipes(lsp)
 
     elif event == "sample_measurement":  # Microfluidics sample_measurement
-        print("perform sample measurement")  # TODO verify
-        microflu.dispense_blocking_and_sample(lsp)
+        print("perform sample measurement")
+        microflu.dispense_blocking_and_sample_2(lsp)
+        # microflu.dispense_try_sequential(lsp)
+        # microflu.dispense_try_constant_slow(lsp)
         # microflu.sequential_dispense(lsp)
-
     elif event == "halt_microflu":  # Microfluidics flush
         print("microfluidics halted")
         microflu.halt(lsp)
