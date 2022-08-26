@@ -9,11 +9,40 @@ import cv2
 import sys
 from numpy.random import default_rng
 import numpy.matlib
-import skimage
+import os
+#import skimage
 from skimage import exposure
 
+import matplotlib.pyplot as plt
+from skimage.transform import rescale
+from skimage.feature import peak_local_max
+from skimage.feature import Cascade
+from numpy.polynomial import polynomial
+from numpy.polynomial.polynomial import polyval2d
 
+import itertools
 #---------------------------------------------------------------------------------------------------------------------------------------
+
+
+def open_images_NC(path):
+
+    print('\n Opening images '+str(path)+' ...')
+    
+    os.chdir(path)  #TODO: NOT SURE ABOUT THIS
+    #files = sorted(filter(os.path.isfile, os.listdir(path)), key=os.path.getctime)  # ordering the images by date of creation
+    files = sorted(filter(os.path.isfile, os.listdir(path)))  # ordering the images by name
+    #imgs = np.zeros((len(files), 3648, 5472))  # list with all the images (jpg or png). TODO: set to size of image
+    imgs = []
+
+    for i, filename in enumerate(files):
+        print(filename)
+    #for filename in sorted(os.listdir(path)):
+        img = cv2.imread(filename, cv2.IMREAD_GRAYSCALE) #changed by NC to run with other camera images
+        imgs.append(img) 
+    
+    return imgs
+
+
 
 def execute_ROI(frame, R):
 # displaying the image
@@ -81,6 +110,23 @@ def Select_ROI_Dynamic(path_image, n,  scale_f = 4):
     return np.array(ROI)
 
 
+def Select_ROI_Dynamic_crop(img, n):
+    print('Select the ROI. Press right button if you want to delete. The last 2 ROIs will be used as background. Press \'q\' when you have finished. ')
+    ROI  = []
+    R0 = 100
+    frame = img
+    for i in range(n):
+        if i == 0:
+            circle0 = execute_ROI(frame, R0)
+            ROI.append(circle0)  
+        else:
+            R = circle0[2]
+            circle = execute_ROI(frame, R)
+            ROI.append(circle) 
+    
+    return np.array(ROI)
+
+
 def crop(img_list, ROIs, width, height):
     centers = ROIs[:,:2]
     lst = []
@@ -93,6 +139,20 @@ def crop(img_list, ROIs, width, height):
             indx4 = center[1]+int(width/2)
             crop_list[j,:,:] = img[indx3:indx4, indx1:indx2]
         lst.append(list(crop_list))
+        
+    return lst
+
+def crop_imgs(img_list, circle):
+    center = circle[0,:2]
+    width = 2*circle[0,2]
+    height = 3*circle[0,2]
+    lst = []
+    for j,img in enumerate(img_list) : 
+        indx1 = center[0]-int(height/2)
+        indx2 = center[0]+int(height/2)
+        indx3 = center[1]-int(width/2)
+        indx4 = center[1]+int(width/2)
+        lst.append(img[indx3:indx4, indx1:indx2])
         
     return lst
             
@@ -192,6 +252,58 @@ def equalize(img_list):
         imgs_eq.append((exposure.equalize_hist(img)*255).astype(np.uint8))
     return imgs_eq
 
+def correct_bright(img_list, bright):
+    corr_list = []
+    for i, img in enumerate(img_list):
+        img_corr = img-(bright/4)   #original code had 2 iterations
+        corr_list.append(img_corr)
+    return corr_list
+
+
+
+def temporal_median(img_list, size_kernel_):
+    """ 
+    Performs temporal median filter without overlapping.
+    Warning: if the number of images is not a multiple of the kernel size, the last images will be lost.
+    
+    imgs: list of images to process
+    size_kernel: number of frames over which computes median filter
+    
+    """
+    print('\n Computing temporal median filter with kernel size ', size_kernel_, '...')
+    imgs_med = []
+   
+    size_kernel = size_kernel_-1
+    for i in np.arange(0, len(img_list)//size_kernel) :  
+        try:
+            seq = np.stack(img_list[i*(size_kernel+1):(size_kernel*(i+1)+i)], axis = 2)  #TODO: use last images as well
+            batch = np.median(seq, axis = 2).astype(np.uint8)
+            imgs_med.append(batch)
+        except:
+            print('Could not compute window with indices '+str(i*(size_kernel+1))+' to '+ str((size_kernel*(i+1)+i)))
+            
+    return imgs_med
+
+def binarize_imgs(imgs, tr):
+    '''
+    Binarize images
+    Function to binarize a list of images using a threshold.
+    input:
+        imgs: list of images as arrays
+    output:
+        rets: array of thresholds
+        imgs_thresh: binarized images with a threshold
+    '''
+    
+    print('Binarizing images...')
+    rets = []
+    imgs_thresh = []
+    for image in imgs:
+        ret, img_thresh = cv2.threshold(image, tr, 255, cv2.THRESH_BINARY)
+        imgs_thresh.append(img_thresh)
+        rets.append(ret)
+    return rets, imgs_thresh
+
 #, (sig_per_img/num_white_mask)*100, (bg_per_img/num_white_mask)*100
 
 
@@ -228,13 +340,17 @@ def equalize(img_list):
 
 
 
-def thresh_Otsu_Bin(img_list):
+def thresh_Otsu_Bin(img_list, val):
     #thresh_list = np.zeros([np.shape(img_list)[0], np.shape(img_list)[1], np.shape(img_list)[2]], dtype = np.uint8)
     thresh_list = []
+    rets = []
     for i, img in enumerate(img_list):
         ret, thresh1 = cv2.threshold(img,0,255,cv2.THRESH_OTSU)
-        thresh_list.append(thresh1.astype(np.uint8))
-    return thresh_list
+        ret_mod = ret + val
+        ret2, thresh2 = cv2.threshold(img, ret_mod, 255, cv2.THRESH_BINARY)
+        thresh_list.append(thresh2.astype(np.uint8))
+        rets.append(ret_mod)
+    return rets, thresh_list
 
 
 def LoG(img_list):
@@ -280,14 +396,7 @@ def opening(img_list, iterations = 1, kernel_size = 5):
 
 
 #%%Background smoothing functions (adapted from SensUs 2019, similar to Matlab code of BIOS lab)
-import numpy as np
-import matplotlib.pyplot as plt
-from skimage.transform import rescale
-from skimage.feature import peak_local_max
-from numpy.polynomial import polynomial
-from numpy.polynomial.polynomial import polyval2d
 
-import itertools
 
 
 
@@ -317,7 +426,7 @@ def polyfit2d_alt1(x, y, z, order=3):
     m, _, _, _ = np.linalg.lstsq(G, z)
     return m
 
-def smooth_background(imgs, rescale_factor=0.2, poly_deg=[1,1]): #before it was 1,2
+def smooth_background(imgs, poly_deg, rescale_factor=0.2): #before it was 1,2
     '''
     Function from SensUs 2019
     Smooths the background of the image by modeling the background with a polynomial 

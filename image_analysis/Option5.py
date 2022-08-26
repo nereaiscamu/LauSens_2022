@@ -68,63 +68,81 @@ width = height = int(ROIs[0,2]*2.5)
 radius = ROIs[0][2]
 inv_imgs = invert_imgs(imgs)
 
-#%%
-th3 = cv.adaptiveThreshold(inv_imgs[0],255,cv.ADAPTIVE_THRESH_GAUSSIAN_C,\
-            cv.THRESH_BINARY,11,2)
-    
-#%%
-ret,th1 = cv.threshold(imgs_log[0],130,255,cv.THRESH_BINARY)
-th =  []
-th.append(th3)
-open_imgs = opening(th, iterations = 1, kernel_size = 3)
-s = open_imgs[0]
-bin_imgs = thresh_Otsu_Bin(open_imgs)
-connectivity = 8  # You need to choose 4 or 8 for connectivity type
-num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(s , connectivity , cv2.CV_32S)
-nb_pixels = 0
-for c in range(0, num_labels):
-    if c == 0:
-        #print("background")
-        continue
-    else:
-        #print("Signal")
-        area = stats[c, cv2.CC_STAT_AREA]
-        if((area>9) & (area<90)): #TODO: before it was 3, 30
-            nb_pixels = nb_pixels + area 
-            
-labels_img = Image.fromarray(labels)    
-        
-labels_img.show()  
-
-
-
-#%%
-# # To try the temporal median
-# seq = np.stack(inv_imgs, axis = 2)  #TODO: use last images as well
-# batch = np.median(seq, axis = 2).astype(np.uint8)
-
-# batch_list = []
-# batch_list.append(batch)
-
-# # Try to use non-local means
 # #%%
-# a = cv2.fastNlMeansDenoising(batch,	
-#                              h = 3,
-#                              templateWindowSize = 20,
-#                              searchWindowSize = 21)
-# Image.fromarray(a).show()
+# th1 = cv2.adaptiveThreshold(inv_imgs[0],255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
+#             cv2.THRESH_BINARY,11,2)
+    
+# #%%
+# #ret,th1 = cv2.threshold(inv_imgs[0],120,255,cv2.THRESH_BINARY)
+# th =  []
+# th.append(th1)
+# open_imgs = opening(th, iterations = 1, kernel_size = 4)
+# s = open_imgs[0]
+# plt.imshow(s, cmap = 'gray')
 
-# a_l = []
-# a_l.append(a)
-#%%
+
+# #%%
+# bin_imgs = thresh_Otsu_Bin(open_imgs)
+# connectivity = 8  # You need to choose 4 or 8 for connectivity type
+# num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(s , connectivity , cv2.CV_32S)
+# nb_pixels = 0
+# for c in range(0, num_labels):
+#     if c == 0:
+#         #print("background")
+#         continue
+#     else:
+#         #print("Signal")
+#         area = stats[c, cv2.CC_STAT_AREA]
+#         if((area>9) & (area<90)): #TODO: before it was 3, 30
+#             nb_pixels = nb_pixels + area 
+            
+# labels_img = Image.fromarray(labels)    
         
+# labels_img.show()  
+
+
+
+# #%%
+# # # To try the temporal median
+# # seq = np.stack(inv_imgs, axis = 2)  #TODO: use last images as well
+# # batch = np.median(seq, axis = 2).astype(np.uint8)
+
+# # batch_list = []
+# # batch_list.append(batch)
+
+# # # Try to use non-local means
+# # #%%
+# # a = cv2.fastNlMeansDenoising(batch,	
+# #                              h = 3,
+# #                              templateWindowSize = 20,
+# #                              searchWindowSize = 21)
+# # Image.fromarray(a).show()
+
+# # a_l = []
+# # a_l.append(a)
+#%%
+def thresh_Otsu_Bin2(img_list):
+    #thresh_list = np.zeros([np.shape(img_list)[0], np.shape(img_list)[1], np.shape(img_list)[2]], dtype = np.uint8)
+    thresh_list = []
+    ret_list = []
+    for i, img in enumerate(img_list):
+        ret, thresh1 = cv2.threshold(img,0,255,cv2.THRESH_OTSU)
+        thresh_list.append(thresh1.astype(np.uint8))
+        ret_list.append(ret)
+    return thresh_list, ret_list
+       
 imgs_log = LoG(inv_imgs)
+bin_imgs, thrs = thresh_Otsu_Bin2(imgs_log)
+
+#%%
+open_imgs = opening(bin_imgs, iterations = 1, kernel_size = 3)
+plt.imshow(open_imgs[0], cmap = 'gray')
+
 
 #%%
 
 open_imgs = opening(imgs_log, iterations = 2, kernel_size = 5)
-
-bin_imgs = thresh_Otsu_Bin(open_imgs)
+bin_imgs, th2 = thresh_Otsu_Bin2(open_imgs)
 
 #%%
 masks = create_circular_mask(bin_imgs, radius, ROIs)
@@ -135,3 +153,11 @@ result = pixel_ratio(masked_imgs, masks, n_spots, n_ROIs)
 slope, R2 = linear_model(result)
 
 
+#%%
+
+# find frequency of pixels in range 0-255
+histr = cv2.calcHist(open_imgs[0],[0],None,[256],[0,256])
+
+# show the plotting graph of an image
+plt.plot(histr)
+plt.show()

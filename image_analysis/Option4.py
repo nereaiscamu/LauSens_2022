@@ -65,18 +65,30 @@ ROIs = Select_ROI_Dynamic(ROI_PATH, n_ROIs, scale_f = 4 )
 #%%
 width = height = int(ROIs[0,2]*2.5)
 radius = ROIs[0][2]
-inv_imgs = invert_imgs(imgs)
 
+
+#%%
+path_blank = "C:/Users/nerea/OneDrive/Documentos/EPFL_MASTER/MA2/SensUs/LauSens_2022/image_analysis/Blank.png"
+brightfield = cv2.imread(path_blank, cv2.IMREAD_GRAYSCALE)
+plt.imshow(brightfield, cmap = 'gray')
+
+
+
+
+corr_list = correct_bright(imgs, brightfield)
+
+inv_imgs = invert_imgs(corr_list)
 #%%
 
 smoothed = smooth_background(inv_imgs)
+plt.imshow(smoothed[0], cmap = 'gray')
 #%%
-imgs_eq = equalize(smoothed)
-  
+imgs_eq = equalize(corr_list)
+plt.imshow(imgs_eq[0], cmap = 'gray')
 
 #%%
 bin_imgs = thresh_Otsu_Bin(imgs_eq)
-
+plt.imshow(bin_imgs[0], cmap = 'gray')
 # binary_mask = inv_imgs[0] < 110
 # fig, ax = plt.subplots()
 # plt.imshow(binary_mask, cmap="gray")
@@ -87,7 +99,7 @@ bin_imgs = thresh_Otsu_Bin(imgs_eq)
 
 #%%
 
-open_imgs = opening(bin_imgs, iterations = 1, kernel_size = 5)
+open_imgs = opening(bin_imgs, iterations = 1, kernel_size = 3)
 
 
 op_img = Image.fromarray(bin_imgs[0])    
@@ -107,10 +119,6 @@ slope, R2 = linear_model(result)
 AN ESTIMATE OF THE CONCENTRATION 
 Also, we can use the connectivity to check the number of NP
 Link here: https://stackoverflow.com/questions/35854197/how-to-use-opencvs-connectedcomponentswithstats-in-python'''
-
-
-
-
 
 
 # inv_imgs = invert_imgs(imgs)
