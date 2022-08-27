@@ -35,13 +35,13 @@ def open_images_NC(path):
     imgs = []
 
     for i, filename in enumerate(files):
-        print(filename)
-    #for filename in sorted(os.listdir(path)):
-        img = cv2.imread(filename, cv2.IMREAD_GRAYSCALE) #changed by NC to run with other camera images
-        imgs.append(img) 
+        if i<400:
+            print('Importing image number '+ str(i) + ' ' + filename)
+        #for filename in sorted(os.listdir(path)):
+            img = cv2.imread(filename, cv2.IMREAD_GRAYSCALE) #changed by NC to run with other camera images
+            imgs.append(img) 
     
     return imgs
-
 
 
 def execute_ROI(frame, R):
@@ -75,10 +75,10 @@ def execute_ROI(frame, R):
              X -= 50
         elif key == ord('d'):
              X += 50
-        elif key == ord('e'):
-             R += 20
-        elif key == ord('r'):
-             R -= 20
+        # elif key == ord('e'):
+        #      R += 20
+        # elif key == ord('r'):
+        #      R -= 20
      
         show_frame = frame.copy()
         show_frame = cv2.circle(show_frame,(X,Y),R,(255,255,255),20)
@@ -96,7 +96,7 @@ def execute_ROI(frame, R):
 def Select_ROI_Dynamic(path_image, n,  scale_f = 4):
     print('Select the ROI. Press right button if you want to delete. The last 2 ROIs will be used as background. Press \'q\' when you have finished. ')
     ROI  = []
-    R0 = 100
+    R0 = 1000
     frame = cv2.imread(path_image, cv2.IMREAD_GRAYSCALE)
     for i in range(n):
         if i == 0:
@@ -109,11 +109,10 @@ def Select_ROI_Dynamic(path_image, n,  scale_f = 4):
     
     return np.array(ROI)
 
-
 def Select_ROI_Dynamic_crop(img, n):
     print('Select the ROI. Press right button if you want to delete. The last 2 ROIs will be used as background. Press \'q\' when you have finished. ')
     ROI  = []
-    R0 = 100
+    R0 = 1000
     frame = img
     for i in range(n):
         if i == 0:
@@ -123,6 +122,17 @@ def Select_ROI_Dynamic_crop(img, n):
             R = circle0[2]
             circle = execute_ROI(frame, R)
             ROI.append(circle) 
+    
+    return np.array(ROI)
+
+def Select_ROI_Dynamic_crop_fixR(img, n):
+    print('Select the ROI. Press right button if you want to delete. The last 2 ROIs will be used as background. Press \'q\' when you have finished. ')
+    ROI  = []
+    R0 = 400
+    frame = img
+    for i in range(n):
+            circle0 = execute_ROI(frame, R0)
+            ROI.append(circle0) 
     
     return np.array(ROI)
 
@@ -164,10 +174,10 @@ def crop_imgs_fixed(img_list, circle):
     print(center)
     lst = []
     for j,img in enumerate(img_list) : 
-        indx1 = center[1]-int(height/4)
-        indx2 = center[1]+int(height/4)
-        indx3 = center[0]-int(width/4)
-        indx4 = center[0]+int(width/4)
+        indx1 = center[1]-int(height/2.5)
+        indx2 = center[1]+int(height/2.5)
+        indx3 = center[0]-int(width/3)
+        indx4 = center[0]+int(width/3)
         lst.append(img[indx1:indx2,  indx3:indx4 ])
         
     return lst
@@ -328,10 +338,10 @@ def connect_mask(img_list, masks, n_spots, n_ROIs):
 from sklearn.linear_model import LinearRegression
 
 
-def linear_model(signal):
+def linear_model(signal, start):
     model = LinearRegression()
-    x = np.arange(0, len(signal)).reshape(-1,1)
-    y = np.array(signal)
+    x = np.arange(0, len(signal[start:])).reshape(-1,1)
+    y = np.array(signal[start:])
     model.fit(x, y)
     r_sq = model.score(x, y)
     print(f"slope: {model.coef_}")

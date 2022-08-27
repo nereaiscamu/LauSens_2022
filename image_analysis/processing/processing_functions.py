@@ -73,10 +73,11 @@ def open_images_NC(path):
     imgs = []
 
     for i, filename in enumerate(files):
-        print(filename)
-    #for filename in sorted(os.listdir(path)):
-        img = cv2.imread(filename, cv2.IMREAD_GRAYSCALE) #changed by NC to run with other camera images
-        imgs.append(img) 
+        if i<300:
+            print('Importing image number '+ str(i) + ' ' + filename)
+        #for filename in sorted(os.listdir(path)):
+            img = cv2.imread(filename, cv2.IMREAD_GRAYSCALE) #changed by NC to run with other camera images
+            imgs.append(img) 
     
     return imgs
 

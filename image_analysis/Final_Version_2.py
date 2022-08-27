@@ -19,6 +19,10 @@ from sklearn.linear_model import LinearRegression
 from skimage import exposure
 
 #%%
+
+name_test = '900pgml_test2_400imgs_2'
+
+#%%
 ## OPENING FILES
 ORIGINAL_FOLDER = os.path.dirname(os.path.realpath(__file__))
 print('THIS IS ORIGINAL FOLDER PATH', str(ORIGINAL_FOLDER))
@@ -58,7 +62,7 @@ n_spots = input("How many spots are visible? ")
 n_bg = input("How many background regions to use? ")
 n_ROIs =int(n_spots) + int(n_bg)
 img = imgs_crop[-1]
-ROIs = Select_ROI_Dynamic_crop(img, n_ROIs)
+ROIs = Select_ROI_Dynamic_crop_fixR(img, n_ROIs)
 
 #%%
 imgs_inv = invert_imgs(imgs_crop)
@@ -122,22 +126,14 @@ print(" The pixel ratio in the spots for those frames is : ", signal)
 plt.plot(signal)
 plt.show()
 
+#%%
+# Saving result in npy and csv
+
+np.savetxt((name_test + "_result.csv"), signal)
 
 #%%
 
-def crop_imgs_fixed_test(img_list, circle):
-    height, width = img_list[0].shape
-    center = circle[0,:2]
-    print(center)
-    lst = []
-    for j,img in enumerate(img_list) : 
-        indx1 = center[1]-int(height/3)
-        indx2 = center[1]+int(height/3)
-        indx3 = center[0]-int(width/4)
-        indx4 = center[0]+int(width/4)
-        lst.append(img[indx1:indx2,  indx3:indx4 ])
-        
-    return lst
+slope, R = linear_model(signal, 10)
 
-
-
+#%%
+plt.imshow(imgs_otsu[-1], cmap = 'gray')
