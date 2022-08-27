@@ -45,36 +45,43 @@ print('Shape imgs', np.shape(imgs))
 os.chdir(ORIGINAL_FOLDER)
 
 #%%
-n_spots = input("How many spots are visible? ")
-n_bg = input("How many background regions to use? ")
-n_ROIs =int(n_spots) + int(n_bg)
-ROIs = Select_ROI_Dynamic(ROI_PATH, n_ROIs, scale_f = 4 )
-width = height = int(ROIs[0,2]*2.5)
-radius = ROIs[0][2]
+# n_spots = input("How many spots are visible? ")
+# n_bg = input("How many background regions to use? ")
+# n_ROIs =int(n_spots) + int(n_bg)
+# ROIs = Select_ROI_Dynamic(ROI_PATH, n_ROIs, scale_f = 4 )
+# width = height = int(ROIs[0,2]*2.5)
+# radius = ROIs[0][2]
 
 #%%
 
 circle = Select_ROI_Dynamic(ROI_PATH, 1, scale_f = 4 )
 
 #%%
-#works well at 800
-imgs_crop = crop_imgs(imgs, circle)
+
+imgs_med = temporal_median(imgs, 5)
 
 #%%
+#works well at 800
+imgs_crop = crop_imgs_fixed(imgs_med, circle)
+#%%
+plt.imshow(imgs_crop[4], cmap = 'gray')
+
+#%%
+n_spots = input("How many spots are visible? ")
+n_bg = input("How many background regions to use? ")
+n_ROIs =int(n_spots) + int(n_bg)
 img = imgs_crop[-1]
 ROIs = Select_ROI_Dynamic_crop(img, n_ROIs)
 
 
 #%%
-imgs_med = temporal_median(imgs_crop, 5)
-#%%
-imgs_inv = invert_imgs(imgs_med)
+imgs_inv = invert_imgs(imgs_log)
 
 #smoothed = smooth_background(imgs_inv, [1,1])
 #plt.imshow(smoothed[-1], cmap = 'gray')
 
 #%%
-imgs_log = LoG(imgs_inv)
+imgs_log = LoG(imgs_med)
 plt.imshow(imgs_log[-1], cmap = 'gray')
 
 #%%
@@ -85,12 +92,12 @@ plt.show()
 
 #%%
 
-rets, imgs_otsu = thresh_Otsu_Bin(imgs_log, +150)
+rets, imgs_otsu = thresh_Otsu_Bin(imgs_med, +0)
 
 plt.imshow(np.invert(imgs_otsu[-1]), cmap = 'gray')
 
 #%%
-
+radius = ROIs[0][2]
 masks = create_circular_mask(imgs_otsu, radius, ROIs)
 masked_imgs = apply_mask(imgs_otsu, masks)
 
@@ -109,11 +116,6 @@ slope, R2 = linear_model(result)
 # plt.show()
 # rets, imgs_bin = cv2.threshold(img, 150, 255, cv2.THRESH_BINARY)
 # plt.imshow(imgs_bin)
-#%%
-
-
-
-
 
 
 #%%

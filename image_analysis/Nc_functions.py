@@ -142,6 +142,7 @@ def crop(img_list, ROIs, width, height):
         
     return lst
 
+
 def crop_imgs(img_list, circle):
     center = circle[0,:2]
     width = 2*circle[0,2]
@@ -153,6 +154,21 @@ def crop_imgs(img_list, circle):
         indx3 = center[1]-int(width/2)
         indx4 = center[1]+int(width/2)
         lst.append(img[indx3:indx4, indx1:indx2])
+        
+    return lst
+
+
+def crop_imgs_fixed(img_list, circle):
+    height, width = img_list[0].shape
+    center = circle[0,:2]
+    print(center)
+    lst = []
+    for j,img in enumerate(img_list) : 
+        indx1 = center[1]-int(height/4)
+        indx2 = center[1]+int(height/4)
+        indx3 = center[0]-int(width/4)
+        indx4 = center[0]+int(width/4)
+        lst.append(img[indx1:indx2,  indx3:indx4 ])
         
     return lst
             
@@ -176,6 +192,7 @@ def create_circular_mask(img_list, radius, ROIs):
         mask_list.append(mask)
         
     return mask_list
+
 
 
 
@@ -228,6 +245,45 @@ def pixel_ratio(img_list, masks, n_spots, n_ROIs):
     print(" The pixel ratio in the spots for those frames is : ", signal)
         
     return signal
+
+
+def count_NP(img): 
+    ''' Function that will compute the connected components and return the number of components
+    between 3-5 pixels TO BE DISCUSSED IF PIXELS CHANGE SIZE WITH PREPROCESSING
+    Connected components of sizes 1 or 2 and above 30 will be disconsidered.
+    
+    An AU-NP is considered as a connected component with size between ????? TODO
+     
+    input:
+        img: 1-D array with intensity values at the ROI area
+    returns: 
+        nb_pixels: number of pixels corresponding to AU-NP
+        percent_pixels: percentage of pixels that correspond to a connected component
+        labels: label matrix, where each pixel in the same connected component gets the same value
+    '''
+
+    components = cv2.connectedComponentsWithStats(img, 8, cv2.CV_32S)
+    num_labels = components[0]  # number of labels
+    labels = components[1]      # label matrix, where each pixel in the same connected component gets the same value
+    stats = components[2]       # stat matrix
+    centroids = components[3]   # centroid matrix
+    
+    nb_pixels = 0
+    num_NP = 0
+    for c in range(0, num_labels):
+        if c == 0:
+            #print("background")
+            continue
+        else:
+            #print("Signal")
+            area = stats[c, cv2.CC_STAT_AREA]
+            if((area>10) & (area<60)): #TODO: before it was 3, 30
+                nb_pixels = nb_pixels + area 
+                num_NP += 1
+    #print('Number of pixels detected: ', nb_pixels)
+    #print('Percentage of pixels detected: ', percent_pixels*100, '%')
+    return nb_pixels, num_NP
+
 
 
 
