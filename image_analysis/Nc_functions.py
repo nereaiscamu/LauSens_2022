@@ -60,7 +60,6 @@ def execute_ROI(frame, R):
             break
         # -------------------------------------------------------------------------------------------------------------------------------------
         # Control panel image 
-        	
         if key == ord('t'):
             str = "image%d.jpg"%i
             cv2.imwrite(str,frame)
@@ -79,7 +78,6 @@ def execute_ROI(frame, R):
         #      R += 20
         # elif key == ord('r'):
         #      R -= 20
-     
         show_frame = frame.copy()
         show_frame = cv2.circle(show_frame,(X,Y),R,(255,255,255),20)
          # ...resize the image by 0.3
@@ -112,7 +110,7 @@ def Select_ROI_Dynamic(path_image, n,  scale_f = 4):
 def Select_ROI_Dynamic_crop(img, n):
     print('Select the ROI. Press right button if you want to delete. The last 2 ROIs will be used as background. Press \'q\' when you have finished. ')
     ROI  = []
-    R0 = 1000
+    R0 = 1300
     frame = img
     for i in range(n):
         if i == 0:
@@ -178,6 +176,10 @@ def crop_imgs_fixed(img_list, circle):
         indx2 = center[1]+int(height/2.5)
         indx3 = center[0]-int(width/3)
         indx4 = center[0]+int(width/3)
+        # indx1 = center[1]-1500
+        # indx2 = center[1]+1500
+        # indx3 = center[0]-1000
+        # indx4 = center[0]+1000
         lst.append(img[indx1:indx2,  indx3:indx4 ])
         
     return lst

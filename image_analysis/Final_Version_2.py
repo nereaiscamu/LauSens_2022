@@ -20,7 +20,7 @@ from skimage import exposure
 
 #%%
 
-name_test = '900pgml_test2_400imgs_2'
+name_test = '180pgml_test2_400imgs'
 
 #%%
 ## OPENING FILES
@@ -75,7 +75,8 @@ histr = cv2.calcHist(imgs_log[-1],[0],None,[256],[0,256])
 
 #%%
 rets, imgs_otsu = thresh_Otsu_Bin(imgs_log, +70)
-# plt.imshow(np.invert(imgs_otsu[-1]), cmap = 'gray')
+#%%
+plt.imshow(np.invert(imgs_otsu[-1]), cmap = 'gray')
 
 #%%
 radius = ROIs[0][2]
@@ -124,6 +125,11 @@ for i in range(num_imgs):
     num_bound_np= np.array(num_np_img) - np.array(num_np_bg)
 print(" The pixel ratio in the spots for those frames is : ", signal)
 plt.plot(signal)
+plt.show()
+
+#%%
+
+plt.plot(num_bound_np)
 plt.show()
 
 #%%
