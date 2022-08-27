@@ -69,12 +69,9 @@ ROIs = Select_ROI_Dynamic_crop(img, n_ROIs)
 imgs_med = temporal_median(imgs_crop, 5)
 #%%
 imgs_inv = invert_imgs(imgs_med)
-#%%
-smoothed = smooth_background(imgs_inv, [1,1])
-#%%
-plt.imshow(smoothed[-1], cmap = 'gray')
 
-
+#smoothed = smooth_background(imgs_inv, [1,1])
+#plt.imshow(smoothed[-1], cmap = 'gray')
 
 #%%
 imgs_log = LoG(imgs_inv)
@@ -92,6 +89,14 @@ rets, imgs_otsu = thresh_Otsu_Bin(imgs_log, +150)
 
 plt.imshow(np.invert(imgs_otsu[-1]), cmap = 'gray')
 
+#%%
+
+masks = create_circular_mask(imgs_otsu, radius, ROIs)
+masked_imgs = apply_mask(imgs_otsu, masks)
+
+#%%
+result = pixel_ratio(masked_imgs, masks, n_spots, n_ROIs)
+slope, R2 = linear_model(result)
 
 
 # #%%
@@ -104,6 +109,13 @@ plt.imshow(np.invert(imgs_otsu[-1]), cmap = 'gray')
 # plt.show()
 # rets, imgs_bin = cv2.threshold(img, 150, 255, cv2.THRESH_BINARY)
 # plt.imshow(imgs_bin)
+#%%
+
+
+
+
+
+
 #%%
 signal = []
 foreground = []

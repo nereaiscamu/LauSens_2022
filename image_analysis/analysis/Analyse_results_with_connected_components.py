@@ -58,7 +58,6 @@ class Measure:
                 area = stats[c, cv2.CC_STAT_AREA]
                 if((area>9) & (area<90)): #TODO: before it was 3, 30
                     nb_pixels = nb_pixels + area 
-                    num_NP += 1
         percent_pixels = nb_pixels / len(img)
         #print('Number of pixels detected: ', nb_pixels)
         #print('Percentage of pixels detected: ', percent_pixels*100, '%')

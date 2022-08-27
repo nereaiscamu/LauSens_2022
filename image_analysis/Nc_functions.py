@@ -229,6 +229,46 @@ def pixel_ratio(img_list, masks, n_spots, n_ROIs):
         
     return signal
 
+
+
+
+def connect_mask(img_list, masks, n_spots, n_ROIs):
+    
+    # 1- Create a blank mask
+    
+    mask = masks[0]
+    img_type = img_list[0][0]
+    blank = np.zeros([np.shape(img_type)[0],np.shape(img_type)[1] ],dtype=np.uint8)
+    blank.fill(255)
+    masked_blank = blank.copy()
+    masked_blank[~mask] = 0
+    num_white_mask = cv2.countNonZero(masked_blank) 
+    
+    # 2- Compute mean signal inside each image masked for each ROI
+    
+    num_imgs = np.shape(img_list[0])[0]
+    
+    sig_per_img = []
+    bg_per_img = []
+    signal = []
+    for i in range(num_imgs):
+        spot_signal_list = []
+        bg_signal_list = []
+        print(i)
+        for j in range(n_ROIs):
+            num_white = cv2.countNonZero(img_list[j][i])  
+            if j<int(n_spots):
+                spot_signal_list.append(num_white)
+            else:
+                bg_signal_list.append(num_white)
+        sig_per_img.append(round(np.mean(spot_signal_list),3))   
+        bg_per_img.append(round(np.mean(bg_signal_list),3))
+        signal.append(round(((np.mean(spot_signal_list) - np.mean(bg_signal_list))/num_white_mask) * 100,3))
+        
+    print(" The pixel ratio in the spots for those frames is : ", signal)
+        
+    return signal
+
 from sklearn.linear_model import LinearRegression
 
 
