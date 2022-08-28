@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat Aug 27 16:27:53 2022
+Created on Sun Aug 28 21:47:42 2022
 
 @author: nerea
 """
@@ -20,7 +20,7 @@ from skimage import exposure
 
 #%%
 
-name_test = '900pgml_test1_400imgs_day1'
+name_test = '2000pgml_test1_400imgs_day2_crop_clahe'
 
 #%%
 ## OPENING FILES
@@ -55,7 +55,7 @@ imgs_med = temporal_median(imgs, 5)
 #works well at 800
 #imgs_crop = crop_imgs_rect(imgs_med, ROI_PATH)
 circle = Select_ROI_Dynamic(ROI_PATH, 1, scale_f = 4 )
-imgs_crop = crop_imgs_fixed(imgs_med, circle)
+imgs_crop = crop_imgs_fixed_2(imgs_med, circle)
 #plt.imshow(imgs_crop[4], cmap = 'gray')
 
 #%%
@@ -67,17 +67,12 @@ ROIs = Select_ROI_Dynamic_crop_fixR(img, n_ROIs)
 
 #%%
 imgs_inv = invert_imgs(imgs_crop)
-imgs_log = LoG(imgs_inv)
-# plt.imshow(imgs_log[-1], cmap = 'gray')
-# histr = cv2.calcHist(imgs_log[-1],[0],None,[256],[0,256])
-# show the plotting graph of an image
-# plt.plot(histr)
-# plt.show()
+imgs_clahe = clahe(imgs_inv)
 
 #%%
-rets, imgs_otsu = thresh_Otsu_Bin(imgs_log, +120)
+rets, imgs_otsu = thresh_Otsu_Bin(imgs_clahe, +40)
 #%%
-plt.imshow(np.invert(imgs_otsu[-1]), cmap = 'gray')
+plt.imshow(imgs_otsu[0])
 
 #%%
 radius = ROIs[0][2]

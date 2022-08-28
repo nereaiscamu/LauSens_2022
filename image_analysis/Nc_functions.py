@@ -81,7 +81,7 @@ def execute_ROI(frame, R):
         show_frame = frame.copy()
         show_frame = cv2.circle(show_frame,(X,Y),R,(255,255,255),20)
          # ...resize the image by 0.3
-        show_frame = cv2.resize(show_frame,(0,0),fx=0.1, fy=0.1)
+        show_frame = cv2.resize(show_frame,(0,0),fx=0.1, fy=0.1) #before 0.1, 0.1
         
          #...and finally display it
         cv2.imshow("SimpleLive_Python_uEye_OpenCV", show_frame)
@@ -183,8 +183,48 @@ def crop_imgs_fixed(img_list, circle):
         lst.append(img[indx1:indx2,  indx3:indx4 ])
         
     return lst
-            
-    
+
+def crop_imgs_fixed_2(img_list, circle):
+    height, width = img_list[0].shape
+    center = circle[0,:2]
+    print(center)
+    lst = []
+    for j,img in enumerate(img_list) : 
+        indx1 = center[1]-int(height/3)
+        indx2 = center[1]+int(height/3)
+        indx3 = center[0]-int(width/4)
+        indx4 = center[0]+int(width/4)
+        # indx1 = center[1]-1500
+        # indx2 = center[1]+1500
+        # indx3 = center[0]-1000
+        # indx4 = center[0]+1000
+        lst.append(img[indx1:indx2,  indx3:indx4 ])
+        
+    return lst
+       
+import imutils
+
+def crop_imgs_rect(img_list, path_image):
+    frame = cv2.imread(path_image, cv2.IMREAD_GRAYSCALE)
+    frame = imutils.resize(frame, width=1000)
+    roi = cv2.selectROI('Select region you want to crop. ', frame, False, False)
+    cv2.destroyWindow('Select region you want to crop. ')
+    #roi = cv2.resize(roi,(0,0),fx=0.25, fy=0.25)
+    lst = []
+    for j,img in enumerate(img_list) : 
+        lst.append(img[int(roi[1]):int(roi[1]+roi[3]), int(roi[0]):int(roi[0]+roi[2])])     
+    return lst
+
+def clahe(img_list):
+    list_ = []
+    for i, img in enumerate(img_list):
+        clahe_ = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        list_.append(clahe_.apply(img))
+    return list_
+
+
+
+ 
 def create_circular_mask(img_list, radius, ROIs):
     centers = ROIs[:,:2]
     img = img_list[0]
@@ -289,7 +329,7 @@ def count_NP(img):
         else:
             #print("Signal")
             area = stats[c, cv2.CC_STAT_AREA]
-            if((area>10) & (area<60)): #TODO: before it was 3, 30
+            if((area>10) & (area<90)): #TODO: before it was 3, 30
                 nb_pixels = nb_pixels + area 
                 num_NP += 1
     #print('Number of pixels detected: ', nb_pixels)
