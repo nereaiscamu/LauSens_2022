@@ -12,12 +12,14 @@ from Nc_functions import *
 
 
 
-path = 'C:/Users/nerea/OneDrive/Documentos/EPFL_MASTER/MA2/SensUs/LauSens_2022/image_analysis/Results_Calib'
+
+path = "/Users/karimzahra/Desktop/LauSens_2022/image_analysis/Results_Calib"
 
 #files = sorted(filter(os.path.isfile, os.listdir(path)), key=os.path.getctime)  # ordering the images by date of creation
-files = sorted(os.listdir(path))  # ordering the images by name
+files = sorted(os.listdir('/Users/karimzahra/Desktop/LauSens_2022/image_analysis/Results_Calib'))  # ordering the images by name
 
 #imgs = np.zeros((len(files), 3648, 5472))  # list with all the images (jpg or png). TODO: set to size of image
+
 results = []
 for i, filename in enumerate(files):
     print('Importing file  number '+ str(i) + ' ' + filename)
@@ -30,18 +32,22 @@ for i in range(len(results)):
 #%%       
 colors = ['c', 'r', 'r', 'b', 'b', 'k', 'k', 'm', 'm', 'g', 'g']
 results2 = []
-names = [] 
+names = []
+std_res = [] 
 for i in range(len(results)-1):
     if files[i].split('_')[0] == files[i+1].split('_')[0]:
         print(files[i].split('_')[0] + ' and ' + files[i+1].split('_')[0] )
-       
-        res= np.mean(results[i:i+1], axis = 0)
-        print(res)
+        print(i)  
+        res= np.mean(results[i:i+2], axis = 0)
+        std = np.std(results[i:i+2], axis = 0)
         results2.append(res)
+        std_res.append(std)
         i += 1
         name = files[i].split('_')[0]
         names.append(name)     
         plt.plot(np.arange(0, len(res)), res-res[0], colors[i], label = name)
+        plt.plot(np.arange(0, len(res)), res-res[0] + std, colors[i], label = name)
+        plt.plot(np.arange(0, len(res)), res-res[0] - std, colors[i], label = name)
        
     if i>0 and (files[i-1].split('_')[0] == files[i].split('_')[0]) :
         i+=1

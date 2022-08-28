@@ -68,7 +68,7 @@ ROIs = Select_ROI_Dynamic_crop_fixR(img, n_ROIs)
 imgs_inv = invert_imgs(imgs_crop)
 imgs_log = LoG(imgs_inv)
 # plt.imshow(imgs_log[-1], cmap = 'gray')
-histr = cv2.calcHist(imgs_log[-1],[0],None,[256],[0,256])
+# histr = cv2.calcHist(imgs_log[-1],[0],None,[256],[0,256])
 # show the plotting graph of an image
 # plt.plot(histr)
 # plt.show()
