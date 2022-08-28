@@ -20,7 +20,7 @@ from skimage import exposure
 
 #%%
 
-name_test = '180pgml_test2_400imgs'
+name_test = '100pgml_test2_400imgs_2'
 
 #%%
 ## OPENING FILES
@@ -142,4 +142,4 @@ np.savetxt((name_test + "_result.csv"), signal)
 slope, R = linear_model(signal, 10)
 
 #%%
-plt.imshow(imgs_otsu[-1], cmap = 'gray')
+plt.imshow(np.invert(imgs_otsu[-1]), cmap = 'gray')
