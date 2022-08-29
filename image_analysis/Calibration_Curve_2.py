@@ -12,7 +12,11 @@ from Nc_functions import *
 
 
 
-path = '/Users/karimzahra/Desktop/LauSens_2022/image_analysis/Results_Calib'
+#path = '/Users/karimzahra/Desktop/LauSens_2022/image_analysis/Results_Calib'
+
+path = 'C:/Users/nerea/OneDrive/Documentos/EPFL_MASTER/MA2/SensUs/LauSens_2022/image_analysis/Results_Calib'
+
+#%%
 
 #files = sorted(filter(os.path.isfile, os.listdir(path)), key=os.path.getctime)  # ordering the images by date of creation
 files = sorted(os.listdir(path))  # ordering the images by name
@@ -121,7 +125,13 @@ for i in range(len(c)):
     slopes[i]= slope
     print(slope)
     r2s.append(R)
+    
+#%%
 
-plt.xticks(np.arange(0,6),c[:,0])    
-plt.plot(slopes)
+
+plt.plot(slopes, c[:,0])
 plt.show()
+
+#%%
+slope_calib, R_calib = linear_model(slopes,1)
+print(R_calib)

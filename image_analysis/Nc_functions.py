@@ -24,6 +24,27 @@ import itertools
 #---------------------------------------------------------------------------------------------------------------------------------------
 
 
+def open_images_NC_2(path):
+
+    print('\n Opening images '+str(path)+' ...')
+    
+    os.chdir(path)  #TODO: NOT SURE ABOUT THIS
+    #files = sorted(filter(os.path.isfile, os.listdir(path)), key=os.path.getctime)  # ordering the images by date of creation
+    files = sorted(filter(os.path.isfile, os.listdir(path)))  # ordering the images by name
+    #imgs = np.zeros((len(files), 3648, 5472))  # list with all the images (jpg or png). TODO: set to size of image
+    imgs = []
+    filenames = []
+    for i, filename in enumerate(files):
+        if i<400:
+            print('Importing image number '+ str(i) + ' ' + filename)
+        #for filename in sorted(os.listdir(path)):
+            img = cv2.imread(filename, cv2.IMREAD_GRAYSCALE) #changed by NC to run with other camera images
+            imgs.append(img) 
+            filenames.append(filename)
+    
+    return imgs, filenames
+
+
 def open_images_NC(path):
 
     print('\n Opening images '+str(path)+' ...')
@@ -33,7 +54,6 @@ def open_images_NC(path):
     files = sorted(filter(os.path.isfile, os.listdir(path)))  # ordering the images by name
     #imgs = np.zeros((len(files), 3648, 5472))  # list with all the images (jpg or png). TODO: set to size of image
     imgs = []
-
     for i, filename in enumerate(files):
         if i<400:
             print('Importing image number '+ str(i) + ' ' + filename)
@@ -641,3 +661,18 @@ def linfit_3D(imgs):
     for i in np.arange(0,num):
         imgs_poly.append(polyCube[:,:,i].astype(np.uint8))
     return imgs_poly
+
+
+def get_concentration(slope):
+    
+    slope_calibration =  0.00327814
+    offset = -0.0013641495149654646
+    
+    -2446.18395303
+     9.59393346
+    concentration = slope*slope_calibration + offset
+    if concentration < 0.5:
+        return 0.5
+    if concentration > 10:
+        return 10
+    return concentration

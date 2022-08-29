@@ -75,7 +75,7 @@ imgs_log = LoG(imgs_inv)
 # plt.show()
 
 #%%
-rets, imgs_otsu = thresh_Otsu_Bin(imgs_log, +120)
+rets, imgs_otsu = thresh_Otsu_Bin(imgs_log, +70)
 #%%
 plt.imshow(np.invert(imgs_otsu[-1]), cmap = 'gray')
 
