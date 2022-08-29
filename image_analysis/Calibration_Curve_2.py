@@ -129,9 +129,31 @@ for i in range(len(c)):
 #%%
 
 
-plt.plot(slopes, c[:,0])
+plt.scatter(slopes, c[:,0], marker = "s")
 plt.show()
 
 #%%
-slope_calib, R_calib = linear_model(slopes,1)
+def linear_model_2(slopes, concentrations):
+    model = LinearRegression()
+    x = slopes.reshape(-1, 1)
+    y = concentrations.reshape(-1, 1)
+    model.fit(x, y)
+    r_sq = model.score(x, y)
+    print(f"slope: {model.coef_}")
+    print(f"intercept: {model.intercept_}")
+    print(f"coefficient of determination: {r_sq}")
+    plt.plot(x,y)
+    plt.show()
+    return(model.coef_, r_sq)
+
+slope_calib, R_calib = linear_model_2(slopes, c[:,0])
 print(R_calib)
+
+
+
+
+
+
+
+
+

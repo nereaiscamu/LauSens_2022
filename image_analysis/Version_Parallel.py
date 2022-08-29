@@ -35,7 +35,7 @@ start = False
 
 #%%
 
-name_test = 'test_parallel'
+name_test = 'C:/Users/nerea/OneDrive/Documentos/EPFL_MASTER/MA2/SensUs/test_parallel'
 
 #IMG_PATH = "C:/Users/nerea/OneDrive/Documentos/EPFL_MASTER/MA2/SensUs/Images_Lab4/all"
 IMG_PATH = "C:/Users/nerea/OneDrive/Documentos/EPFL_MASTER/MA2/SensUs/Images_Lab4/2ngmL_15h_1_part1"
@@ -130,13 +130,13 @@ def processing(MED_PATH, img_raw):
         num_np_img.append(round(np.mean(spot_num),3))
         num_np_bg.append(round(np.mean(bg_num),3))
         num_bound_np= np.array(num_np_img) - np.array(num_np_bg)
-    print(" The pixel ratio in the spots for those frames is : ", signal)
     # plt.plot(signal)
     # plt.show()
     slope, R = linear_model(signal, 10)
     np.savetxt((name_test + "_result.csv"), signal)
-    concentration = 
+    concentration = get_concentration(slope)
+    print(" The concentration is : ", concentration)
 
-    return (signal, num_bound_np, slope)
+    return (signal, num_bound_np, slope, concentration)
 
-signal, num_bound_np, slope = processing(MED_PATH, img_raw)
+signal, num_bound_np, slope , concentration = processing(MED_PATH, img_raw)

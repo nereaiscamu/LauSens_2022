@@ -665,14 +665,11 @@ def linfit_3D(imgs):
 
 def get_concentration(slope):
     
-    slope_calibration =  0.00327814
-    offset = -0.0013641495149654646
-    
-    -2446.18395303
-     9.59393346
+    slope_calibration =  79091.15385922
+    offset = 210.26536709
     concentration = slope*slope_calibration + offset
-    if concentration < 0.5:
-        return 0.5
-    if concentration > 10:
-        return 10
+    # if concentration < 0.5:
+    #     return 0.5
+    # if concentration > 10:
+    #     return 10
     return concentration
