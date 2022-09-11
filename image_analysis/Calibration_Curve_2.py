@@ -63,7 +63,6 @@ a = pd.DataFrame(results)
 
 a['concentration'] = names_all
 a['concentration'] = a['concentration'].astype('int')
-
 b = a.groupby('concentration').mean().reset_index()
 b.sort_values('concentration')
 d = a.groupby('concentration').std().reset_index()
@@ -170,10 +169,3 @@ print(R_calib)
 
 slope_calib2, R_calib2 = linear_model_2(slopes2, a[:,-1])
 print(R_calib)
-
-
-
-
-
-
-

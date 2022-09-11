@@ -37,15 +37,21 @@ def open_images_NC_2(path):
     imgs = []
     filenames = []
     for i, filename in enumerate(files):
+<<<<<<< HEAD
+        if i<400:
+=======
         if i<650:
+>>>>>>> 1cc3671dfff4f5cdb1a65fe6c051c560d460880b
             print('Importing image number '+ str(i) + ' ' + filename)
         #for filename in sorted(os.listdir(path)):
             img = cv2.imread(filename, cv2.IMREAD_GRAYSCALE) #changed by NC to run with other camera images
             imgs.append(img) 
+<<<<<<< HEAD
+=======
             filenames.append(filename)
+>>>>>>> 1cc3671dfff4f5cdb1a65fe6c051c560d460880b
     
     return imgs, filenames
-
 
 
 
@@ -112,7 +118,26 @@ def Select_ROI_Dynamic(path_image, n,  scale_f = 4):
     
     return np.array(ROI)
 
+<<<<<<< HEAD
+def Select_ROI_Dynamic_crop(img, n):
+    print('Select the ROI. Press right button if you want to delete. The last 2 ROIs will be used as background. Press \'q\' when you have finished. ')
+    ROI  = []
+    R0 = 1300
+=======
 
+def Select_ROI_Dynamic_crop_fixR(img, n):
+    print('Select the ROI. Press right button if you want to delete. The last 2 ROIs will be used as background. Press \'q\' when you have finished. ')
+    ROI  = []
+    R0 = 400
+>>>>>>> 1cc3671dfff4f5cdb1a65fe6c051c560d460880b
+    frame = img
+    for i in range(n):
+            circle0 = execute_ROI(frame, R0)
+            ROI.append(circle0) 
+    
+    return np.array(ROI)
+
+<<<<<<< HEAD
 def Select_ROI_Dynamic_crop_fixR(img, n):
     print('Select the ROI. Press right button if you want to delete. The last 2 ROIs will be used as background. Press \'q\' when you have finished. ')
     ROI  = []
@@ -124,6 +149,46 @@ def Select_ROI_Dynamic_crop_fixR(img, n):
     
     return np.array(ROI)
 
+
+def crop(img_list, ROIs, width, height):
+    centers = ROIs[:,:2]
+    lst = []
+    for i, center in enumerate(centers):
+        crop_list = np.zeros([np.shape(img_list)[0], height, width], dtype = np.uint8)
+        for j,img in enumerate(img_list) : 
+            indx1 = center[0]-int(height/2)
+            indx2 = center[0]+int(height/2)
+            indx3 = center[1]-int(width/2)
+            indx4 = center[1]+int(width/2)
+            crop_list[j,:,:] = img[indx3:indx4, indx1:indx2]
+        lst.append(list(crop_list))
+        
+    return lst
+
+
+def crop_imgs(img_list, circle):
+=======
+def crop_imgs_fixed(img_list, circle):
+    height, width = img_list[0].shape
+>>>>>>> 1cc3671dfff4f5cdb1a65fe6c051c560d460880b
+    center = circle[0,:2]
+    print(center)
+    lst = []
+    for j,img in enumerate(img_list) : 
+        indx1 = center[1]-int(height/2.5)
+        indx2 = center[1]+int(height/2.5)
+        indx3 = center[0]-int(width/3)
+        indx4 = center[0]+int(width/3)
+        # indx1 = center[1]-1500
+        # indx2 = center[1]+1500
+        # indx3 = center[0]-1000
+        # indx4 = center[0]+1000
+        lst.append(img[indx1:indx2,  indx3:indx4 ])
+        
+    return lst
+
+
+<<<<<<< HEAD
 def crop_imgs_fixed(img_list, circle):
     height, width = img_list[0].shape
     center = circle[0,:2]
@@ -142,8 +207,50 @@ def crop_imgs_fixed(img_list, circle):
         
     return lst
 
+def crop_imgs_fixed_2(img_list, circle):
+    height, width = img_list[0].shape
+    center = circle[0,:2]
+    print(center)
+    lst = []
+    for j,img in enumerate(img_list) : 
+        indx1 = center[1]-int(height/3)
+        indx2 = center[1]+int(height/3)
+        indx3 = center[0]-int(width/4)
+        indx4 = center[0]+int(width/4)
+        # indx1 = center[1]-1500
+        # indx2 = center[1]+1500
+        # indx3 = center[0]-1000
+        # indx4 = center[0]+1000
+        lst.append(img[indx1:indx2,  indx3:indx4 ])
+        
+    return lst
+       
+import imutils
+
+def crop_imgs_rect(img_list, path_image):
+    frame = cv2.imread(path_image, cv2.IMREAD_GRAYSCALE)
+    frame = imutils.resize(frame, width=1000)
+    roi = cv2.selectROI('Select region you want to crop. ', frame, False, False)
+    cv2.destroyWindow('Select region you want to crop. ')
+    #roi = cv2.resize(roi,(0,0),fx=0.25, fy=0.25)
+    lst = []
+    for j,img in enumerate(img_list) : 
+        lst.append(img[int(roi[1]):int(roi[1]+roi[3]), int(roi[0]):int(roi[0]+roi[2])])     
+    return lst
+
+def clahe(img_list):
+    list_ = []
+    for i, img in enumerate(img_list):
+        clahe_ = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        list_.append(clahe_.apply(img))
+    return list_
 
 
+
+ 
+=======
+
+>>>>>>> 1cc3671dfff4f5cdb1a65fe6c051c560d460880b
 def create_circular_mask(img_list, radius, ROIs):
     centers = ROIs[:,:2]
     img = img_list[0]
@@ -194,6 +301,25 @@ def count_NP(img, minn=9, maxx=90):
         labels: label matrix, where each pixel in the same connected component gets the same value
     '''
 
+<<<<<<< HEAD
+
+def count_NP(img): 
+    ''' Function that will compute the connected components and return the number of components
+    between 3-5 pixels TO BE DISCUSSED IF PIXELS CHANGE SIZE WITH PREPROCESSING
+    Connected components of sizes 1 or 2 and above 30 will be disconsidered.
+    
+    An AU-NP is considered as a connected component with size between ????? TODO
+     
+    input:
+        img: 1-D array with intensity values at the ROI area
+    returns: 
+        nb_pixels: number of pixels corresponding to AU-NP
+        percent_pixels: percentage of pixels that correspond to a connected component
+        labels: label matrix, where each pixel in the same connected component gets the same value
+    '''
+
+=======
+>>>>>>> 1cc3671dfff4f5cdb1a65fe6c051c560d460880b
     components = cv2.connectedComponentsWithStats(img, 8, cv2.CV_32S)
     num_labels = components[0]  # number of labels
     labels = components[1]      # label matrix, where each pixel in the same connected component gets the same value
@@ -202,7 +328,10 @@ def count_NP(img, minn=9, maxx=90):
     
     nb_pixels = 0
     num_NP = 0
+<<<<<<< HEAD
+=======
     mask = np.zeros(img.shape, dtype="uint8")
+>>>>>>> 1cc3671dfff4f5cdb1a65fe6c051c560d460880b
     for c in range(0, num_labels):
         if c == 0:
             #print("background")
@@ -210,6 +339,57 @@ def count_NP(img, minn=9, maxx=90):
         else:
             #print("Signal")
             area = stats[c, cv2.CC_STAT_AREA]
+<<<<<<< HEAD
+            if((area>10) & (area<90)): #TODO: before it was 3, 30
+                nb_pixels = nb_pixels + area 
+                num_NP += 1
+    #print('Number of pixels detected: ', nb_pixels)
+    #print('Percentage of pixels detected: ', percent_pixels*100, '%')
+    return nb_pixels, num_NP
+
+
+
+
+
+def connect_mask(img_list, masks, n_spots, n_ROIs):
+    
+    # 1- Create a blank mask
+    
+    mask = masks[0]
+    img_type = img_list[0][0]
+    blank = np.zeros([np.shape(img_type)[0],np.shape(img_type)[1] ],dtype=np.uint8)
+    blank.fill(255)
+    masked_blank = blank.copy()
+    masked_blank[~mask] = 0
+    num_white_mask = cv2.countNonZero(masked_blank) 
+    
+    # 2- Compute mean signal inside each image masked for each ROI
+    
+    num_imgs = np.shape(img_list[0])[0]
+    
+    sig_per_img = []
+    bg_per_img = []
+    signal = []
+    for i in range(num_imgs):
+        spot_signal_list = []
+        bg_signal_list = []
+        print(i)
+        for j in range(n_ROIs):
+            num_white = cv2.countNonZero(img_list[j][i])  
+            if j<int(n_spots):
+                spot_signal_list.append(num_white)
+            else:
+                bg_signal_list.append(num_white)
+        sig_per_img.append(round(np.mean(spot_signal_list),3))   
+        bg_per_img.append(round(np.mean(bg_signal_list),3))
+        signal.append(round(((np.mean(spot_signal_list) - np.mean(bg_signal_list))/num_white_mask) * 100,3))
+        
+    print(" The pixel ratio in the spots for those frames is : ", signal)
+        
+    return signal
+
+from sklearn.linear_model import LinearRegression
+=======
             if((area>minn) & (area<maxx)): #TODO: before it was 3, 30
                 nb_pixels = nb_pixels + area 
                 num_NP += 1
@@ -223,6 +403,7 @@ def count_NP(img, minn=9, maxx=90):
     #print('Number of pixels detected: ', nb_pixels)
     #print('Percentage of pixels detected: ', percent_pixels*100, '%')
     return nb_pixels, num_NP
+>>>>>>> 1cc3671dfff4f5cdb1a65fe6c051c560d460880b
 
 
 def linear_model(signal, start):

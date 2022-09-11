@@ -176,7 +176,26 @@ def continue_from_halt(lsp):
 ##
 ######################MAIN######################
 ##
-
+def end_measurement(lsp):
+    trash = 1
+    cartridge = 5
+    final_sequence = (
+        peak_speed(100)
+        + wait(200)
+        + change_to_valve_fastest(trash)
+        + wait(200)
+        + pickup_position(400)
+        + wait(200)
+        + change_to_valve_fastest(cartridge)
+        + wait(200)
+        + peak_speed(20)
+        + wait(200)
+        + go_to_absolute_pump_position(0)
+        + wait(200)
+    )
+    halt(lsp)
+    time.sleep(0.1)
+    write_sequence_to_pump(lsp, final_sequence)
 
 def go_to_zero(lsp):
     trash = 1
@@ -204,9 +223,9 @@ def filling_pipes(lsp):
     fill_water_pipe = (
         change_to_valve_fastest(water)
         + wait(200)
-        + peak_speed(50)
+        + peak_speed(100)
         + wait(200)
-        + pickup_position(500)
+        + pickup_position(1000)
         + wait(200)
         + change_to_valve_fastest(trash)
         + wait(200)
@@ -216,9 +235,9 @@ def filling_pipes(lsp):
     fill_detergent_pipe = (
         change_to_valve_fastest(detergent)
         + wait(200)
-        + peak_speed(50)
+        + peak_speed(100)
         + wait(200)
-        + pickup_position(500)
+        + pickup_position(1000)
         + wait(200)
         + change_to_valve_fastest(trash)
         + wait(200)
@@ -230,7 +249,7 @@ def filling_pipes(lsp):
         + wait(200)
         + peak_speed(50)
         + wait(200)
-        + pickup_position(200)
+        + pickup_position(300)
         + wait(200)
         + change_to_valve_fastest(trash)
         + wait(200)
@@ -437,7 +456,7 @@ def clean_all(lsp):
     # first bleach, then detergent, then ethanol, then DI water, then air, twice for each step, 4 times for air
 
     sequence_1 = fill + clean_1_2 + fill + clean_4_5 + fill + clean_6
-    sequence_2 = repeat_sequence(sequence_1, 2) + wait(5000)
+    sequence_2 = repeat_sequence(sequence_1, 3) + wait(5000)
     sequence_3 = repeat_sequence(sequence_2, 6)
     final_sequence = set_speed + sequence_3
 
@@ -581,9 +600,13 @@ def dispense_blocking_and_sample_2(lsp):
         + wait(200)
         + change_to_valve_fastest(trash)
         + wait(200)
+        + peak_speed(100)
+        + wait(200)
         + go_to_absolute_pump_position(0)
         + wait(200)
         + change_to_valve_fastest(sample)
+        + wait(200)
+        + peak_speed(10)
         + wait(200)
         + pickup_position(110)
         + wait(200)
@@ -610,7 +633,7 @@ def dispense_blocking_and_sample_2(lsp):
             + wait(2000)
             + go_to_absolute_pump_position(0)
             + wait(2000),
-            80
+            1
         )
     )
     dispense_water = (
@@ -630,6 +653,110 @@ def dispense_blocking_and_sample_2(lsp):
 
     final_sequence = (
         dispense_blocking + add_air + pickup_sample + dispense_sample + dispense_water
+    )
+
+    write_sequence_to_pump(lsp, final_sequence)
+
+def dispense_blocking_and_sample_3(lsp):
+
+    bb_incubation_time_ms = 200
+
+    trash = 1
+    water = 2
+    detergent = 3
+    blocking = 4
+    cartridge = 5
+    sample = 6
+
+    # clean_trash=change_to_valve_fastest(sample)+wait(200)+peak_speed(100)+wait(200)+pickup_position(2000)+wait(200)+change_to_valve_fastest(trash)+wait(200)+go_to_absolute_pump_position(0)+wait(200)
+
+    dispense_blocking = (
+        change_to_valve_fastest(blocking)
+        + wait(200)
+        + peak_speed(50)
+        + wait(200)
+        + pickup_position(200)
+        + wait(200)
+        + change_to_valve_fastest(cartridge)
+        + wait(200)
+        + peak_speed(10)
+        + wait(200)
+        + go_to_absolute_pump_position(0)
+        + wait(bb_incubation_time_ms)
+    )
+    add_air = (
+        change_to_valve_fastest(trash)
+        + wait(200)
+        + peak_speed(100)
+        + wait(200)
+        + pickup_position(20)
+        + wait(200)
+        + change_to_valve_fastest(cartridge)
+        + wait(200)
+        + peak_speed(10)
+        + wait(200)
+        + go_to_absolute_pump_position(0)
+        + wait(200)
+    )
+    pickup_sample = (
+        change_to_valve_fastest(sample)
+        + wait(200)
+        + peak_speed(10)
+        + wait(200)
+        + pickup_position(80)
+        + wait(200)
+        + change_to_valve_fastest(trash)
+        + wait(200)
+        + peak_speed(100)
+        + wait(200)
+        + go_to_absolute_pump_position(0)
+        + wait(200)
+        + change_to_valve_fastest(sample)
+        + wait(200)
+        + peak_speed(10)
+        + wait(200)
+        + pickup_position(110)
+        + wait(200)
+    )
+    dispense_sample = (
+        change_to_valve_fastest(cartridge)
+        + peak_speed(2)
+        + wait(200)
+        + dispense_position(110)
+        + wait(200)
+        + change_to_valve(sample)
+        + peak_speed(200)
+        + wait(200)
+        + pickup_position(80)
+        + wait(200)
+        + change_to_valve_fastest(cartridge)
+        + wait(200)
+        + peak_speed(1)
+        + wait(200)
+        + repeat_sequence(
+            dispense_position(2)
+            + wait(120000),
+            30
+        )
+        + wait(200)
+    )
+    dispense_water = (
+        change_to_valve_fastest(water)
+        + wait(200)
+        + peak_speed(50)
+        + wait(200)
+        + pickup_position(200)
+        + wait(200)
+        + change_to_valve_fastest(cartridge)
+        + wait(200)
+        + peak_speed(10)
+        + wait(200)
+        + go_to_absolute_pump_position(0)
+        + wait(200)
+    )
+
+    final_sequence = (
+        dispense_blocking + pickup_sample + dispense_sample + dispense_water
     )
 
     write_sequence_to_pump(lsp, final_sequence)
