@@ -21,6 +21,7 @@ Files
 - `manual_focus.py` : Python script to move camera backward and forward (via input) for focusing. It also set the focus step.
 - `microflu.py` : Python script to control pump
 - `imgproc.py` : Python script to process images
+- `clean_img.py` : Python script to process images to remove images outilers (not used)
 - `lausens.png` : LauSens logo image
 - `sensUs.png` : Sens'Us logo image
 - `tmp.png` : Temporarily saved image (used by `gui.py` to compute its sharpness)
@@ -29,20 +30,15 @@ Files
 Folder
 
 - `sketch_may17a` : Arduino sketch for motor control (to be upload on arduino Nano)
-- `Images` : all images from microscope in \_.fig \_.png or \_.jpg format
+- `images` : images blurred and sharped
 - `img_proc` : folder used to store images for processing
 
-  - `images` : folder that contains stored images during live acquisition
-  - `images_processed` : folder that contains processed images after image processing
+  - `images` : folder that contains stored images during live acquisition (5 consecutive images deleted within 10 sec)
+  - `images_processed` : folder that contains processed images after image processing (median of those 5 consecutive images)
+  - `saved_img` : folder that contains saved imaged with right clic on user interface
+  - `results` : results obtained afer clicking on image processing with GUI
 
 - `processing` : folder used by image processing
-
-- `tests` :
-  - `bluriness-test.ipynb` : Testing file for testing bluriness metric
-  - `pysimplegui_matplotlib_test.py` : Testing file for solving problem of using `matplotlib` with `PySimpleGUI`
-  - `test.py` : CURRENTLY NOT WORKING (was previously working). Python script to move camera using sangaboard package (many thanks to https://openflexure.discourse.group/t/graphical-interface-for-motor-control/924)
-  - `port.py` : Python script to list open or occupied serial port
-  - `parameters_camera.png` : Capture from SpinView of empirically "good" parameters (gain and exposure time)
 
 ### Requirements
 

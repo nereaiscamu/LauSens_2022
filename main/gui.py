@@ -277,7 +277,7 @@ if __name__ == "__main__":
     ]
 
     try:
-        tts=gTTS(text="Welcome to Lausens user interface : Oui, ma gâtée, RS4 gris nardo, bien sûr qu'ils m'ont raté (gros, bien sûr) Soleil dans la bulle, sur le Prado, Shifter pro' (Shifter pro') Contre-sens (ah), ma chérie, tu es à contre-sens Puta, où tu étais quand j'mettais des sept euros d'essence (hein) Tu veux nous faire la guerre (hein), par Dieu, c'est B (ah) Ça prend ton Audi, ça prend ta gadji, ça prend ta CB (eh, eh)", en = "fr")
+        tts=gTTS(text="Welcome to Lausens user interface", en = "fr")
         tts.save("welcome.mp3")
     except:
         pass
