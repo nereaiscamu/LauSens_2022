@@ -5,7 +5,11 @@ import control_flip_camera
 import microflu
 import clean_img
 import imgproc
-import PySpin
+
+try:
+    import PySpin
+except ImportError as e:
+    print(e)
 from matplotlib.figure import Figure
 import os
 import numpy as np
@@ -15,7 +19,11 @@ import time
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from io import BytesIO
 import base64
-from gtts import gTTS
+
+try:
+    from gtts import gTTS
+except ImportError as e:
+    pass
 import multiprocessing
 import sys
 
@@ -24,7 +32,7 @@ if __name__ == "__main__":
     try:
         arduino = serial.Serial(port="COM3", baudrate=9600, timeout=1000)
         # print(arduino) # Arduino info.
-    except: 
+    except:
         print("Arduino not connected")
 
     # Pump init
@@ -39,7 +47,7 @@ if __name__ == "__main__":
         arduino.write(com.encode("ascii"))
         time.sleep(0.05)
 
-
+    # Move camera along given direction and given step (and update position camera coordinates)
     def move_along_axis(pos_camera, dir, step_focus):
         # format :
         # delay (2 chars) + " " + focusStep (4 chars) + " " +  axisdirection (3 chars : x/y/z + fw/bw)
@@ -70,7 +78,6 @@ if __name__ == "__main__":
         except:
             print("Arduino not connected")
 
-
     # Absolute path of this file folder
     path = os.path.dirname(os.path.abspath(__file__))
 
@@ -81,18 +88,23 @@ if __name__ == "__main__":
 
     # Video / Image stream
     print("Connection with camera")
-    camera_connected = True
-    system = PySpin.System.GetInstance()
-    cam_list = system.GetCameras()
-    num_cameras = cam_list.GetSize()
-    if num_cameras != 1:  # No camera or more than one camera
-        cam_list.Clear()
-        system.ReleaseInstance()
-        # raise Exception("Single camera not detected")
-        print("Single camera not detected")
+    try:
+        camera_connected = True
+        system = PySpin.System.GetInstance()
+        cam_list = system.GetCameras()
+        num_cameras = cam_list.GetSize()
+        if num_cameras != 1:  # No camera or more than one camera
+            cam_list.Clear()
+            system.ReleaseInstance()
+            # raise Exception("Single camera not detected")
+            print("Single camera not detected")
+            camera_connected = False
+        else:
+            cam = cam_list[0]
+    except Exception as e:
+        print("Connection with camera failed")
         camera_connected = False
-    else: 
-        cam = cam_list[0]
+        print(e)
 
     # Size of zoomed image displayed
     size_zoom = (200, 200)
@@ -105,23 +117,43 @@ if __name__ == "__main__":
     zoom_pos_1 = (camera_img_size[1], camera_img_size[0])
     tmp_zoom_pos_1 = (camera_img_size[1], camera_img_size[0])
 
-    move_pos = (int(camera_img_size[1]/2), int(camera_img_size[0]/2))
+    move_pos = (int(camera_img_size[1] / 2), int(camera_img_size[0] / 2))
 
     # Init camera
-    if camera_connected == True:
-        control_flip_camera.init_camera(cam)
+    try:
+        if camera_connected == True:
+            control_flip_camera.init_camera(cam)
+    except:
+        pass
 
     # Layout
     sens_us_logo = [[sg.Image(size=size, key="-LOGO-", background_color="white")]]
     explanations = [
         [
-            sg.Column([[sg.Text("Welcome on our user interface !", pad = (0,0))], [sg.Text("This", pad = (0,0 )), sg.Text("GUI", pad = (0,0 ), enable_events = True, key = '-TEXT-CLICKED-'), sg.Text("aims at controlling our system made of microfluidics pump, an autofocusing microscope and an image processing to detect IL-6 spots.", pad = (0,0 ))]], pad = (0, 0))
+            sg.Column(
+                [
+                    [sg.Text("Welcome on our user interface !", pad=(0, 0))],
+                    [
+                        sg.Text("This", pad=(0, 0)),
+                        sg.Text(
+                            "GUI", pad=(0, 0), enable_events=True, key="-TEXT-CLICKED-"
+                        ),
+                        sg.Text(
+                            "aims at controlling our system made of microfluidics pump, an autofocusing microscope and an image processing to detect IL-6 spots.",
+                            pad=(0, 0),
+                        ),
+                    ],
+                ],
+                pad=(0, 0),
+            )
         ]
     ]
 
     tab_micro_flu = [
         [
-            sg.Button("Sample measurement", key="sample_measurement", pad=(10, 10, 10, 0)),
+            sg.Button(
+                "Sample measurement", key="sample_measurement", pad=(10, 10, 10, 0)
+            ),
             sg.Button("Filling", key="filling_microflu"),
         ],
         [
@@ -135,7 +167,6 @@ if __name__ == "__main__":
         [
             sg.Button("EmptyTrash", key="empty_trash", pad=(10, 10, 0, 0)),
             sg.Button("end", key="end_microflu", pad=(10, 10, 0, 0)),
-        
         ],
     ]
     tab_Autofocus = [
@@ -190,7 +221,6 @@ if __name__ == "__main__":
         ],
     ]
 
-
     print_metric = [
         [
             sg.TabGroup(
@@ -233,7 +263,7 @@ if __name__ == "__main__":
                 enable_events=True,
             ),
         ],
-        [sg.Image(size=size_zoom, key="-IMAGE_ZOOM-", pad = (70, 15))],
+        [sg.Image(size=size_zoom, key="-IMAGE_ZOOM-", pad=(70, 15))],
     ]
     img_to_print = [
         [
@@ -247,7 +277,7 @@ if __name__ == "__main__":
                 key="-GRAPH-",
                 drag_submits=True,
                 enable_events=True,
-                right_click_menu=["&Right", ["Zoom mode", "Move mode", "Copy"]]
+                right_click_menu=["&Right", ["Zoom mode", "Move mode", "Copy"]],
             )
         ]
     ]
@@ -259,14 +289,20 @@ if __name__ == "__main__":
             sg.Column(sens_us_logo),
             sg.VSeperator(),
             sg.Column(
-                explanations, element_justification="left", expand_x=True, size=(100, 50)
+                explanations,
+                element_justification="left",
+                expand_x=True,
+                size=(100, 50),
             ),
         ],
         [
             sg.Column(img_to_print),
             sg.VSeperator(),
             sg.Column(
-                print_metric, element_justification="left", expand_x=True, size=(100, 575)
+                print_metric,
+                element_justification="left",
+                expand_x=True,
+                size=(100, 575),
             ),
         ],
     ]
@@ -276,27 +312,30 @@ if __name__ == "__main__":
         [sg.Canvas(key="figCanvas")],
     ]
 
+    # Make software speak
     try:
-        tts=gTTS(text="Welcome to Lausens user interface", en = "fr")
+        tts = gTTS(text="Welcome to Lausens user interface", en="fr")
         tts.save("welcome.mp3")
     except:
         pass
     os.system(path + "/play_welcome.bat")
 
     try:
-        tts=gTTS(text="GUY mesure 100 pico gramme mililitre", lang="fr", slow = True)
+        tts = gTTS(text="GUY mesure 100 pico gramme mililitre", lang="fr", slow=True)
         tts.save("measure.mp3")
     except:
         pass
 
     try:
-        tts=gTTS(text="gui", lang="fr", slow = True)
+        tts = gTTS(text="gui", lang="fr", slow=True)
         tts.save("gui.mp3")
     except:
         pass
 
+    # Process to clean automatically images
     process1 = multiprocessing.Process(target=clean_img.deamon)
 
+    # Not used
     # process2 = multiprocessing.Process(target=imgproc.update_every_10, args = [path])
     process2_run = False
 
@@ -305,6 +344,7 @@ if __name__ == "__main__":
     sg.theme("SystemDefault")
 
     AppFont = "Any 10"
+    # Main window
     window = sg.Window(
         "LauSens - User interface",
         layout,
@@ -313,8 +353,9 @@ if __name__ == "__main__":
         auto_size_buttons=True,
         font=AppFont,
     ).Finalize()
-    window.maximize()
+    # window.maximize() # Uncomment to have full screen at launch
 
+    # Second window displayed only for plotting purpose
     window2 = sg.Window(
         "Autofocus plots",
         layout2,
@@ -344,14 +385,14 @@ if __name__ == "__main__":
         data = f"P5 {width} {height} 255 ".encode() + image.astype(np.uint8).tobytes()
         return ImageTk.PhotoImage(width=width, height=height, data=data, format="PPM")
 
-
     # Compute and return bluriness of current image (sent by camera)
     def get_bluriness_metric():
         image_result = cam.GetNextImage(1000)
 
         if image_result.IsIncomplete():
             raise Exception(
-                "Image incomplete with image status %d ..." % image_result.GetImageStatus()
+                "Image incomplete with image status %d ..."
+                % image_result.GetImageStatus()
             )
 
         else:
@@ -485,10 +526,8 @@ if __name__ == "__main__":
         # return bluriness_metric.blurre_JPEG_size_b(path + "/tmp.png") / 8 / 1000
         return bluriness_metric.blurre_lapace_var(path + "/tmp.png")
 
-
     # Estimate time taken to send command and to move motors given a step value
     # Return value will be the time to wait after we send a command to move motor of this step
-
 
     def estimate_step_time(step):
         # Empirical measure
@@ -498,7 +537,6 @@ if __name__ == "__main__":
         time_for_step = 2.5
         time = int(time_for_step + step * 1 / 70)
         return time
-
 
     # Fast autofocus but can fall into a local maxima
     # Principle :
@@ -548,14 +586,12 @@ if __name__ == "__main__":
                 time.sleep(time_for_step)
                 step = int(step / 2)
 
-            
-            event, _ = window.read(
-                timeout=20
-            )
+            event, _ = window.read(timeout=20)
             # TODO Param 3 :
-            if event == "Autofocus" or step < 10 or opt_val > 6000:  # Stopping conditions -- or abs(above - below) < 3
+            if (
+                event == "Autofocus" or step < 10 or opt_val > 6000
+            ):  # Stopping conditions -- or abs(above - below) < 3
                 optimum = True
-
 
     # Improved autofocus
     def autofocus_simple(pos_camera):
@@ -593,7 +629,9 @@ if __name__ == "__main__":
             print(i)
             val = get_bluriness_metric()
             move_along_axis(pos_camera, "-UP2-", step)
-            sharpness_values_by_z = np.concatenate((sharpness_values_by_z, np.array([val])))
+            sharpness_values_by_z = np.concatenate(
+                (sharpness_values_by_z, np.array([val]))
+            )
             time.sleep(time_for_step)
 
         # Testing
@@ -607,7 +645,9 @@ if __name__ == "__main__":
         # print(estimate_focal_point)
         # print(range_curve - estimate_focal_point)
 
-        move_along_axis(pos_camera, "-DOWN2-", step * (range_curve - estimate_focal_point))
+        move_along_axis(
+            pos_camera, "-DOWN2-", step * (range_curve - estimate_focal_point)
+        )
         time.sleep(time_for_step * (range_curve - estimate_focal_point))
         best = get_bluriness_metric()
 
@@ -623,7 +663,6 @@ if __name__ == "__main__":
                 move_along_axis(pos_camera, "-UP2-", step)
                 focus = True
 
-
     # Used to display plot on interface
     class Canvas(FigureCanvasTkAgg):
         """
@@ -635,19 +674,20 @@ if __name__ == "__main__":
             self.canvas = self.get_tk_widget()
             self.canvas.pack(side="top", fill="both", expand=1)
 
-
     # Autofocus based on paper
     def smart_z_stack(pos_camera):
         print("i)")
         range_first_curve = 16
         step = 20
-        time_for_step = estimate_step_time(step) 
+        time_for_step = estimate_step_time(step)
         sharpness_values_by_z = np.array([])
         for i in range(range_first_curve):
             print(i)
             val = get_bluriness_metric()
             move_along_axis(pos_camera, "-UP2-", step)
-            sharpness_values_by_z = np.concatenate((sharpness_values_by_z, np.array([val])))
+            sharpness_values_by_z = np.concatenate(
+                (sharpness_values_by_z, np.array([val]))
+            )
             time.sleep(time_for_step)
 
         # Back to initial state
@@ -689,7 +729,8 @@ if __name__ == "__main__":
         tmp = round(
             np.abs(
                 np.sum(
-                    second_shorter_curve_by_z - sharpness_values_by_z[:range_second_curve]
+                    second_shorter_curve_by_z
+                    - sharpness_values_by_z[:range_second_curve]
                 )
             )
         )
@@ -724,9 +765,11 @@ if __name__ == "__main__":
             # move to a position below
             if step * (estimate_focal_point - below_val) > 9999:
                 raise Exception("Focal point is too far (TODO)")
-            move_along_axis(pos_camera, "-UP2-", step * (estimate_focal_point - below_val))
+            move_along_axis(
+                pos_camera, "-UP2-", step * (estimate_focal_point - below_val)
+            )
             time.sleep(time_for_step * (estimate_focal_point - below_val))
-            
+
             # collect a stack of 9 images with their sharpness + z-position
             stack_9_img = np.array([])
             for i in range(9):
@@ -771,7 +814,6 @@ if __name__ == "__main__":
 
         print("iv)")
 
-
     # Position of camera RELATIVE (when launching soft. position of camera is (0, 0, 0))
     pos_camera = np.array([0, 0, 0])
 
@@ -789,13 +831,14 @@ if __name__ == "__main__":
 
     # Save image
     save_img = False
-    saved_img_nbr = 0 
+    saved_img_nbr = 0
 
     # Moving mode window
     move_mode = False
     go_move = False
 
-    def run_autofocus(pos_camera, choice = "Algo1"):
+    # Choose autofocus algo
+    def run_autofocus(pos_camera, choice="Algo1"):
         # AUTOFOCUS ALGO TO CHOOSE :
         if choice == "Algo1":
             autofocus_fast(pos_camera)
@@ -804,6 +847,7 @@ if __name__ == "__main__":
         else:
             smart_z_stack(pos_camera)
 
+    # Move camera back to 0 coordinates
     def move_to_zero():
         index_step = 0
         step_list = [500, 200, 50, 10, 5]
@@ -828,32 +872,8 @@ if __name__ == "__main__":
             ) and index_step <= len(step_list) - 2:
                 index_step += 1
 
-
     # Update/display image and compute/display both bluriness metrics (JPEG size and Laplacian variance) on interace
     def update():
-
-        """
-        if imgproc.end_process_3 == True: # TODO not working I think
-            global process3_run
-            print("Concentration is : ", imgproc.concentration) 
-
-            fig = Figure()
-            ax = fig.add_subplot(1, 1, 1)
-            ax.set_title("i) Signal")
-            ax.plot(range(imgproc.signal), imgproc.signal)
-            ax = fig.add_subplot(1, 2, 2)
-            ax.set_title("ii) Bound NP")
-            ax.plot(range(imgproc.num_bound_np), imgproc.num_bound_np)
-            fig.tight_layout()
-            canvas = Canvas(fig, window2["figCanvas"].Widget)
-            canvas.draw()
-            window2.set_alpha(1)
-            window2.refresh()
-
-            imgproc.end_process_3 = False
-            process3_run = False
-        """
-
         try:
             image_result = cam.GetNextImage(100)
 
@@ -881,15 +901,24 @@ if __name__ == "__main__":
                         ):
                             zoom_pos_0 = (0, 0)
                             zoom_pos_1 = (camera_img_size[1], camera_img_size[0])
-                        elif zoom_pos_1[0] < zoom_pos_0[0] and zoom_pos_1[1] < zoom_pos_0[1]:
+                        elif (
+                            zoom_pos_1[0] < zoom_pos_0[0]
+                            and zoom_pos_1[1] < zoom_pos_0[1]
+                        ):
                             tmp = zoom_pos_0
                             zoom_pos_0 = zoom_pos_1
                             zoom_pos_1 = tmp
-                        elif zoom_pos_1[0] > zoom_pos_0[0] and zoom_pos_1[1] < zoom_pos_0[1]:
+                        elif (
+                            zoom_pos_1[0] > zoom_pos_0[0]
+                            and zoom_pos_1[1] < zoom_pos_0[1]
+                        ):
                             tmp = zoom_pos_0
                             zoom_pos_0 = (zoom_pos_0[0], zoom_pos_1[1])
                             zoom_pos_1 = (zoom_pos_1[0], tmp[1])
-                        elif zoom_pos_1[0] < zoom_pos_0[0] and zoom_pos_1[1] > zoom_pos_0[1]:
+                        elif (
+                            zoom_pos_1[0] < zoom_pos_0[0]
+                            and zoom_pos_1[1] > zoom_pos_0[1]
+                        ):
                             tmp = zoom_pos_0
                             zoom_pos_0 = (zoom_pos_1[0], zoom_pos_0[1])
                             zoom_pos_1 = (tmp[0], zoom_pos_1[1])
@@ -931,16 +960,27 @@ if __name__ == "__main__":
                         )
                 else:
                     if go_move == True:
-                        tmp_x = int(move_pos[0] - camera_img_size[1]/2)
-                        tmp_y = int(move_pos[1] - camera_img_size[0]/2)
+                        tmp_x = int(move_pos[0] - camera_img_size[1] / 2)
+                        tmp_y = int(move_pos[1] - camera_img_size[0] / 2)
 
-                        tmp_x = (int(tmp_x * 500 / int(camera_img_size[1]/2))) # en x
-                        tmp_y = (int(tmp_y * 300 / int(camera_img_size[0]/2))) # en y
+                        tmp_x = int(tmp_x * 500 / int(camera_img_size[1] / 2))  # en x
+                        tmp_y = int(tmp_y * 300 / int(camera_img_size[0] / 2))  # en y
 
-                        move_along_axis(pos_camera, "-UP-" if tmp_x >= 0 else "-DOWN-", tmp_x if tmp_x >= 0 else -tmp_x)
-                        move_along_axis(pos_camera, "-RIGHT-" if tmp_y >= 0 else "-LEFT-", tmp_y if tmp_y >= 0 else -tmp_y)
+                        move_along_axis(
+                            pos_camera,
+                            "-UP-" if tmp_x >= 0 else "-DOWN-",
+                            tmp_x if tmp_x >= 0 else -tmp_x,
+                        )
+                        move_along_axis(
+                            pos_camera,
+                            "-RIGHT-" if tmp_y >= 0 else "-LEFT-",
+                            tmp_y if tmp_y >= 0 else -tmp_y,
+                        )
 
-                        move_pos = (int(camera_img_size[1]/2), int(camera_img_size[0]/2))
+                        move_pos = (
+                            int(camera_img_size[1] / 2),
+                            int(camera_img_size[0] / 2),
+                        )
 
                         go_move = False
 
@@ -955,19 +995,30 @@ if __name__ == "__main__":
                     # if time.time() - consecutive_time >= 2:
 
                     print(
-                    "Saving image at step "
-                    + str(acqu_step)
-                    + " numbered "
-                    + str(consecutive_nbr)
-                    + " at time "
-                    + str(time.time() - acqu_time)
+                        "Saving image at step "
+                        + str(acqu_step)
+                        + " numbered "
+                        + str(consecutive_nbr)
+                        + " at time "
+                        + str(time.time() - acqu_time)
                     )
 
                     Image.fromarray(image_data).save(
-                        path + "/img_proc/images/saved_img_" + str(acqu_step).zfill(3) + "-" + str(consecutive_nbr) + "timestamp_" + str(time.time() - acqu_time_overall)[:5] + ".jpeg",
+                        path
+                        + "/img_proc/images/saved_img_"
+                        + str(acqu_step).zfill(3)
+                        + "-"
+                        + str(consecutive_nbr)
+                        + "timestamp_"
+                        + str(time.time() - acqu_time_overall)[:5]
+                        + ".jpeg",
                     )
 
-                    window["time_live"].update("Live acquisition time is : " + str((time.time() - acqu_time_overall)/60) + " min")
+                    window["time_live"].update(
+                        "Live acquisition time is : "
+                        + str((time.time() - acqu_time_overall) / 60)
+                        + " min"
+                    )
 
                     if consecutive_nbr == 1:
                         try:
@@ -979,12 +1030,13 @@ if __name__ == "__main__":
                         acqu_time = time.time()
                         consecutive_nbr = 0
                         acqu_step += 1
-                        
-                        process2 = multiprocessing.Process(target=imgproc.update_every_10, args = [path])
+
+                        process2 = multiprocessing.Process(
+                            target=imgproc.update_every_10, args=[path]
+                        )
                         process2.start()
-                        
-       
-                        if acqu_step >= 6*30:
+
+                        if acqu_step >= 6 * 30:
                             live_acqu = False
                             consecutive_nbr = 0
                             acqu_step = 0
@@ -993,7 +1045,10 @@ if __name__ == "__main__":
                         consecutive_nbr += 1
                         # consecutive_time = time.time()
 
-                image_center = (int(image_data.shape[0] / 2), int(image_data.shape[1] / 2))
+                image_center = (
+                    int(image_data.shape[0] / 2),
+                    int(image_data.shape[1] / 2),
+                )
                 image_data_zoom = image_data[
                     int(image_center[0] - 100) : int(image_center[0] + 100),
                     int(image_center[1] - 100) : int(image_center[1] + 100),
@@ -1010,7 +1065,9 @@ if __name__ == "__main__":
                     # TODO reduce compress_level -> faster but less precise
                     save_img = False
                     # Image.fromarray(image_data).save(path + "/img_proc/saved_img/Image_" + str(saved_img_nbr) + ".png", compress_level=1)
-                    Image.fromarray(image_data).save(path + "/img_proc/saved_img/Image_0.png", compress_level=1)
+                    Image.fromarray(image_data).save(
+                        path + "/img_proc/saved_img/Image_0.png", compress_level=1
+                    )
                     saved_img_nbr += 1
                     # print(f"Done in {time.time() - start_time} sec")
 
@@ -1049,7 +1106,10 @@ if __name__ == "__main__":
                     int(i * reducing_factor) for i in image_data.shape
                 ]
                 image_data = cv2.resize(image_data, (resized_height, resized_width))
-                image_center = (int(image_data.shape[0] / 2), int(image_data.shape[1] / 2))
+                image_center = (
+                    int(image_data.shape[0] / 2),
+                    int(image_data.shape[1] / 2),
+                )
 
                 window["-TEXT_METRIC-"].update(
                     # "Bluriness metric for this image :\n" +
@@ -1065,7 +1125,9 @@ if __name__ == "__main__":
                 # To display img after
                 img_zoom = _photo_image(image_data_zoom)
                 buffered = BytesIO()
-                Image.fromarray(image_data).save(buffered, format="PNG", compress_level = 0) # modified
+                Image.fromarray(image_data).save(
+                    buffered, format="PNG", compress_level=0
+                )  # modified
                 img_str = base64.b64encode(buffered.getvalue())
                 buffered.close()
                 window["-GRAPH-"].erase()
@@ -1076,7 +1138,6 @@ if __name__ == "__main__":
 
         except:
             pass
-
 
     # Run the Event Loop
     while True:
@@ -1094,7 +1155,18 @@ if __name__ == "__main__":
             window["-wait-msg-"].update("Please wait autofocus !")
             window.refresh()
             choice = "Algo1"
-            choice, _ = sg.Window('Autofocus algo', [[sg.T('Which algo to choose')], [sg.Button("Algo1", s=10), sg.Button("Algo2", s=10), sg.Button("Algo3", s=10)]], disable_close=True).read(close=True)
+            choice, _ = sg.Window(
+                "Autofocus algo",
+                [
+                    [sg.T("Which algo to choose")],
+                    [
+                        sg.Button("Algo1", s=10),
+                        sg.Button("Algo2", s=10),
+                        sg.Button("Algo3", s=10),
+                    ],
+                ],
+                disable_close=True,
+            ).read(close=True)
 
             run_autofocus(pos_camera, choice)
             sg.popup_non_blocking(
@@ -1123,14 +1195,16 @@ if __name__ == "__main__":
             print("perform image acquisition")
 
             file_name = os.listdir(path + "\\img_proc\\images_processed")
-    
+
             for name in file_name:
                 if " " not in name and ".jpeg" in name:
                     os.remove(path + "\\img_proc\\images_processed\\" + name)
 
             try:
                 process3.kill()
-                process3 = multiprocessing.Process(target=imgproc.processing, args=(path, time_to_wait))
+                process3 = multiprocessing.Process(
+                    target=imgproc.processing, args=(path, time_to_wait)
+                )
             except:
                 pass
 
@@ -1140,23 +1214,32 @@ if __name__ == "__main__":
             acqu_time_overall = time.time()
             # consecutive_time = time.time() # TODO
 
-            # process1.start()  
+            # process1.start()
 
         elif event == "imgproc":  # Image processing
             print("perform image processing")
 
             if process3_run == False:
 
-                tmp_win = sg.Window('Continue processing ?', [[sg.T('Time to wait in min')], [sg.Input(5, s=10, key='_TIME_TO_WAIT_'), sg.Ok(s=10)]], disable_close=True)
+                tmp_win = sg.Window(
+                    "Continue processing ?",
+                    [
+                        [sg.T("Time to wait in min")],
+                        [sg.Input(5, s=10, key="_TIME_TO_WAIT_"), sg.Ok(s=10)],
+                    ],
+                    disable_close=True,
+                )
                 tmp_win.read(close=True)
 
                 try:
-                    time_to_wait = int(tmp_win['_TIME_TO_WAIT_'].get()) * 60  
+                    time_to_wait = int(tmp_win["_TIME_TO_WAIT_"].get()) * 60
                 except:
                     time_to_wait = 60 * 5
 
                 start = int(window["-nbr_start-"].get())
-                process3 = multiprocessing.Process(target=imgproc.processing, args=(path, time_to_wait, start))
+                process3 = multiprocessing.Process(
+                    target=imgproc.processing, args=(path, time_to_wait, start)
+                )
                 process3.start()
                 # process3.join()
 
@@ -1207,7 +1290,7 @@ if __name__ == "__main__":
         elif event == "zero_micro":
             print("continuing zero")
             microflu.go_to_zero(lsp)
-        
+
         elif event == "end_microflu":
             print("End microflu")
             microflu.end_measurement(lsp)
@@ -1221,10 +1304,10 @@ if __name__ == "__main__":
 
         elif event == "-GAIN-":  # Gain
             control_flip_camera.configure_gain(cam, window["-GAIN-"].get())
-        
-        elif event == '-TEXT-CLICKED-':
+
+        elif event == "-TEXT-CLICKED-":
             os.system(path + "/play_gui.bat")
-            window["-TEXT-CLICKED-"].update("GUY", text_color = "red")
+            window["-TEXT-CLICKED-"].update("GUY", text_color="red")
 
         elif event == "Copy":
             save_img = True
@@ -1233,7 +1316,7 @@ if __name__ == "__main__":
         elif event == "Move mode":
             print("Move mode")
             move_mode = True
-        
+
         elif event == "Zoom mode":
             print("Zoom mode")
             move_mode = False
@@ -1259,12 +1342,12 @@ if __name__ == "__main__":
                     zoom_in = True
                 if zoom_in == True and event == "-GRAPH-":
                     tmp_zoom_pos_1 = values["-GRAPH-"]
-                elif event == "-GRAPH-+UP" :
+                elif event == "-GRAPH-+UP":
                     zoom_pos_1 = values["-GRAPH-"]
                     zoom_in = False
                     time.sleep(0.01)
             else:
-                if event == "-GRAPH-+UP": 
+                if event == "-GRAPH-+UP":
                     move_pos = values["-GRAPH-"]
                     go_move = True
                     print(move_pos)
@@ -1292,8 +1375,10 @@ if __name__ == "__main__":
             cam_list.Clear()
         except Exception as exc:
             print(exc)
-            
-    system.ReleaseInstance()
+    try:
+        system.ReleaseInstance()
+    except:
+        pass
 
     window.close()
     window2.close()
