@@ -16,13 +16,11 @@ Folders
 
 Clone repo :
 
-`git clone git@github.com:nereaiscamu/LauSens_2022.git`
+`git clone https://github.com/nereaiscamu/LauSens_2022.git`
 
-Go to main script :
+OR download the repo
 
-`cd LauSens_2022/main`
-
-Install packages with `pip` :
+Install packages with `pip` (see `https://pip.pypa.io/en/stable/installation/`):
 
 `pip install PySimpleGUI`
 
@@ -38,11 +36,23 @@ Install packages with `pip` :
 
 `pip install scikit-learn`
 
-Install package PySpin via `https://flir.app.boxcn.net/v/SpinnakerSDK/` (choose your OS, python folder, and processor architecture) following README.txt in downloaded folder.
+Download PYTHON package PySpin via `https://flir.app.boxcn.net/v/SpinnakerSDK/` (in `yourOS/python_folder/processor_architecture`) then install it following `README.txt` in downloaded folder.
 
-Then run script with python3:
+Download and install PySpin DRIVERS via `https://flir.app.boxcn.net/v/SpinnakerSDK/` (FULL_SDK for exemple).
+
+YOU ARE READY TO RUN OUR SOFT. !
+
+Go to main script :
+
+`cd LauSens_2022/main`
+
+And run script with python3:
 
 `python3 gui.py`
+
+To see how our software works please read `user_manual.md` !
+
+For any question about the code please contact me at : `gaietan.renault@alumni.epfl.ch`
 
 ### Awards :
 
@@ -59,7 +69,5 @@ Thanks to our software engineers and micro-flu engineers: Gaiëtan Renault, Nere
 Thanks to EPFL BIOnanophotonic Systems laboratory (BIOS), ForumEPFL, Thorlabs, AMF Advanced microfluidics and COMSOL.
 
 ## The LauSens EPFL team 2022.
-
-For any question about the code please contact me at : `gaietan.renault@alumni.epfl.ch`
 
 ![Our bio sensor](./bio_sensor.jpg)

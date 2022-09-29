@@ -8,8 +8,8 @@ import imgproc
 
 try:
     import PySpin
-except ImportError as e:
-    print(e)
+except:
+    pass
 from matplotlib.figure import Figure
 import os
 import numpy as np
@@ -84,7 +84,9 @@ if __name__ == "__main__":
     # Logo
     size = (100, 50)
     im = Image.open(path + "/lausens.png")
-    im = im.resize(size, resample=Image.Resampling.BICUBIC)
+    im = im.resize(
+        size, resample=Image.BICUBIC
+    )  # Image.Resampling.BICUBIC or Image.BICUBIC (Depends on PIL version)
 
     # Video / Image stream
     print("Connection with camera")
